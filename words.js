@@ -1,0 +1,25 @@
+// Word bank for Scribble It — kept simple and drawable
+module.exports = [
+  "apple", "banana", "pizza", "burger", "ice cream", "cake", "donut", "cookie",
+  "cat", "dog", "elephant", "giraffe", "penguin", "shark", "octopus", "butterfly",
+  "snake", "turtle", "rabbit", "spider", "whale", "dinosaur", "dragon", "unicorn",
+  "house", "castle", "bridge", "lighthouse", "windmill", "igloo", "tent", "barn",
+  "car", "bicycle", "airplane", "rocket", "helicopter", "submarine", "train", "boat",
+  "sun", "moon", "star", "rainbow", "cloud", "lightning", "tornado", "volcano",
+  "tree", "flower", "cactus", "mushroom", "leaf", "mountain", "beach", "island",
+  "guitar", "piano", "drums", "violin", "trumpet", "microphone", "headphones",
+  "phone", "laptop", "camera", "television", "robot", "clock", "lamp", "key",
+  "umbrella", "glasses", "hat", "shoe", "sock", "glove", "scarf", "crown",
+  "pencil", "book", "scissors", "hammer", "ladder", "broom", "candle", "balloon",
+  "soccer ball", "basketball", "tennis", "bowling", "skateboard", "surfboard",
+  "fishing", "swimming", "dancing", "sleeping", "running", "jumping", "singing",
+  "pirate", "ninja", "wizard", "clown", "astronaut", "mermaid", "ghost", "zombie",
+  "angel", "vampire", "cowboy", "knight", "chef", "doctor", "firefighter",
+  "snowman", "campfire", "fireworks", "waterfall", "desert", "jungle", "cave",
+  "sandwich", "spaghetti", "taco", "sushi", "popcorn", "watermelon", "carrot",
+  "cheese", "egg", "pineapple", "strawberry", "grapes", "mango", "coconut",
+  "eye", "nose", "mustache", "muscle", "skeleton", "brain", "heart", "tooth",
+  "spider web", "bird nest", "anchor", "compass", "treasure", "map", "diamond",
+  "envelope", "gift", "trophy", "medal", "flag", "kite", "yo-yo", "dice",
+  "toothbrush", "shower", "toilet", "mirror", "pillow", "blanket", "backpack"
+];

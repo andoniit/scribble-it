@@ -1,0 +1,14 @@
+{
+  "name": "scribble-it",
+  "version": "1.0.0",
+  "description": "A skribbl.io-style drawing & guessing game where you draw in the air with your hands, tracked by your webcam",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}

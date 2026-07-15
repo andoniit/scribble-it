@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Scribble It — draw in the air!</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- ======== LOBBY ======== -->
+  <div id="lobby" class="overlay">
+    <div class="lobby-card">
+      <h1>✋ Scribble It</h1>
+      <p class="tagline">Like skribbl.io — but you draw in the air with your hand!</p>
+      <input id="nameInput" type="text" maxlength="16" placeholder="Your name" autocomplete="off" />
+      <input id="roomInput" type="text" maxlength="20" placeholder="Room (optional)" autocomplete="off" />
+      <button id="joinBtn" class="big-btn">Play!</button>
+      <p id="lobbyError" class="error"></p>
+      <div class="how-to">
+        <strong>How air-drawing works:</strong>
+        <span>🤏 Pinch your thumb + index finger together to draw, open to move without drawing. Mouse works too!</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== GAME ======== -->
+  <div id="game" class="hidden">
+    <header id="topBar">
+      <div id="roundInfo">Round – / –</div>
+      <div id="wordDisplay">Waiting for players...</div>
+      <div id="timerDisplay">⏱ –</div>
+    </header>
+
+    <main id="layout">
+      <aside id="playersPanel">
+        <h2>Players</h2>
+        <ul id="playersList"></ul>
+        <button id="startBtn" class="big-btn hidden">Start Game</button>
+      </aside>
+
+      <section id="canvasWrap">
+        <canvas id="drawCanvas" width="960" height="640"></canvas>
+        <div id="handCursor" class="hidden"></div>
+        <video id="camVideo" playsinline muted></video>
+        <div id="camStatus">camera off</div>
+
+        <div id="toolbar" class="hidden">
+          <div id="colors"></div>
+          <input id="brushSize" type="range" min="2" max="30" value="6" title="Brush size" />
+          <button id="eraserBtn" class="tool-btn" title="Eraser">🧽</button>
+          <button id="clearBtn" class="tool-btn" title="Clear canvas">🗑️</button>
+          <button id="camToggleBtn" class="tool-btn" title="Toggle hand tracking">📷</button>
+        </div>
+      </section>
+
+      <aside id="chatPanel">
+        <h2>Guess!</h2>
+        <ul id="chatList"></ul>
+        <form id="chatForm">
+          <input id="chatInput" type="text" maxlength="100" placeholder="Type your guess..." autocomplete="off" />
+        </form>
+      </aside>
+    </main>
+
+    <!-- word chooser modal -->
+    <div id="chooseModal" class="overlay hidden">
+      <div class="lobby-card">
+        <h2>Choose a word to draw</h2>
+        <div id="wordChoices"></div>
+      </div>
+    </div>
+
+    <!-- turn/game end modal -->
+    <div id="resultModal" class="overlay hidden">
+      <div class="lobby-card">
+        <h2 id="resultTitle"></h2>
+        <div id="resultBody"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="client.js"></script>
+</body>
+</html>

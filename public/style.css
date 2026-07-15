@@ -1,0 +1,284 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #1a1c2c;
+  --panel: #24263a;
+  --panel-2: #2e3150;
+  --accent: #5d5fef;
+  --accent-2: #ef5da8;
+  --text: #eef0ff;
+  --muted: #9a9db8;
+  --ok: #4ade80;
+}
+
+html, body { height: 100%; }
+
+body {
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- overlays / modals ---------- */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(12, 13, 24, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.lobby-card {
+  background: var(--panel);
+  border-radius: 16px;
+  padding: 36px 40px;
+  width: min(420px, 92vw);
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.lobby-card h1 { font-size: 2.2rem; margin-bottom: 6px; }
+.tagline { color: var(--muted); margin-bottom: 22px; }
+
+.lobby-card input {
+  width: 100%;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  border: 2px solid var(--panel-2);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1rem;
+  outline: none;
+}
+.lobby-card input:focus { border-color: var(--accent); }
+
+.big-btn {
+  width: 100%;
+  padding: 13px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: white;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.big-btn:hover { transform: scale(1.03); }
+
+.error { color: #f87171; margin-top: 10px; min-height: 1.2em; }
+
+.how-to {
+  margin-top: 20px;
+  font-size: 0.85rem;
+  color: var(--muted);
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: left;
+}
+.how-to strong { display: block; color: var(--text); margin-bottom: 4px; }
+
+/* ---------- game layout ---------- */
+#game { display: flex; flex-direction: column; height: 100vh; }
+
+#topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  background: var(--panel);
+  font-weight: 700;
+}
+#wordDisplay { font-size: 1.4rem; letter-spacing: 4px; }
+#timerDisplay { font-size: 1.2rem; min-width: 70px; text-align: right; }
+#timerDisplay.low { color: #f87171; animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: 0.4; } }
+
+#layout {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 200px 1fr 260px;
+  gap: 10px;
+  padding: 10px;
+  min-height: 0;
+}
+
+aside {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+aside h2 { font-size: 0.95rem; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; }
+
+#playersList { list-style: none; overflow-y: auto; flex: 1; }
+#playersList li {
+  padding: 8px 10px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  background: var(--panel-2);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.95rem;
+}
+#playersList li.guessed { background: #14532d; }
+#playersList li.drawing { outline: 2px solid var(--accent); }
+#playersList .score { color: var(--muted); font-size: 0.85rem; }
+
+/* ---------- canvas area ---------- */
+#canvasWrap {
+  position: relative;
+  background: var(--panel);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#drawCanvas {
+  background: white;
+  border-radius: 8px;
+  max-width: 100%;
+  max-height: calc(100% - 60px);
+  touch-action: none;
+  cursor: crosshair;
+}
+
+#camVideo {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 180px;
+  border-radius: 10px;
+  transform: scaleX(-1);
+  opacity: 0.85;
+  display: none;
+  border: 2px solid var(--accent);
+}
+#camVideo.on { display: block; }
+
+#camStatus {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-size: 0.75rem;
+  background: rgba(0,0,0,0.55);
+  padding: 4px 10px;
+  border-radius: 20px;
+  color: var(--muted);
+}
+
+#handCursor {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border: 3px solid var(--accent-2);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition: background 0.1s;
+  z-index: 10;
+}
+#handCursor.pinching { background: var(--accent-2); }
+
+/* ---------- toolbar ---------- */
+#toolbar {
+  position: absolute;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--panel-2);
+  padding: 8px 14px;
+  border-radius: 30px;
+}
+
+#colors { display: flex; gap: 6px; }
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+.color-swatch.active { border-color: white; transform: scale(1.15); }
+
+.tool-btn {
+  background: var(--bg);
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+.tool-btn.active { outline: 2px solid var(--accent); }
+
+/* ---------- chat ---------- */
+#chatList {
+  list-style: none;
+  flex: 1;
+  overflow-y: auto;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+}
+#chatList li { padding: 4px 6px; border-radius: 6px; margin-bottom: 2px; word-wrap: break-word; }
+#chatList li.system { color: var(--muted); font-style: italic; }
+#chatList li.correct { color: var(--ok); font-weight: 700; }
+#chatList li .who { font-weight: 700; color: var(--accent-2); }
+
+#chatForm input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 2px solid var(--panel-2);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+}
+#chatForm input:focus { border-color: var(--accent); }
+
+/* ---------- word choices ---------- */
+#wordChoices { display: flex; flex-direction: column; gap: 10px; margin-top: 14px; }
+#wordChoices button {
+  padding: 14px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  border: 2px solid var(--accent);
+  background: var(--bg);
+  color: var(--text);
+  border-radius: 10px;
+  cursor: pointer;
+}
+#wordChoices button:hover { background: var(--accent); }
+
+/* ---------- results ---------- */
+#resultBody { margin-top: 12px; font-size: 1.05rem; }
+#resultBody .rank-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg);
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 900px) {
+  #layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
+  #playersPanel { order: 3; }
+  #canvasWrap { order: 1; min-height: 340px; }
+  #chatPanel { order: 2; max-height: 220px; }
+}
