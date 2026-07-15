@@ -280,6 +280,28 @@ function addChat(html, cls = "") {
 const esc = (s) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+// consistent emoji avatar per player, derived from the name so every client agrees
+const AVATARS = ["🦊", "🐼", "🐸", "🦄", "🐙", "🐯", "🐝", "🐧", "🦁", "🐢", "🐰", "🦖", "🐨", "🐹", "🦉", "🐳"];
+function avatarFor(name) {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return AVATARS[h % AVATARS.length];
+}
+
+function confetti(count = 130) {
+  const colors = ["#7c5cff", "#ff5da2", "#ffc83d", "#4ade80", "#22d3ee", "#fb7185"];
+  for (let i = 0; i < count; i++) {
+    const c = document.createElement("div");
+    c.className = "confetti";
+    c.style.left = `${Math.random() * 100}vw`;
+    c.style.background = colors[i % colors.length];
+    c.style.animationDuration = `${2.5 + Math.random() * 2.5}s`;
+    c.style.animationDelay = `${Math.random() * 0.8}s`;
+    document.body.appendChild(c);
+    setTimeout(() => c.remove(), 6500);
+  }
+}
+
 // ---------- socket events ----------
 $("startBtn").addEventListener("click", () => socket.emit("startGame"));
 
@@ -304,15 +326,18 @@ socket.on("roomState", (s) => {
   // players list
   const ul = $("playersList");
   ul.innerHTML = "";
-  s.players
-    .slice()
-    .sort((a, b) => b.score - a.score)
-    .forEach((p) => {
-      const li = document.createElement("li");
-      li.className = (p.guessed ? "guessed " : "") + (p.drawing ? "drawing" : "");
-      li.innerHTML = `<span>${p.drawing ? "✏️ " : ""}${esc(p.name)}${p.id === selfId ? " (you)" : ""}</span><span class="score">${p.score}</span>`;
-      ul.appendChild(li);
-    });
+  const sorted = s.players.slice().sort((a, b) => b.score - a.score);
+  const topScore = sorted.length ? sorted[0].score : 0;
+  sorted.forEach((p) => {
+    const li = document.createElement("li");
+    li.className = (p.guessed ? "guessed " : "") + (p.drawing ? "drawing" : "");
+    const crown = p.score === topScore && topScore > 0 ? "👑 " : "";
+    li.innerHTML =
+      `<span class="avatar">${avatarFor(p.name)}</span>` +
+      `<span class="player-name">${crown}${p.drawing ? "✏️ " : ""}${esc(p.name)}${p.id === selfId ? " <small>(you)</small>" : ""}</span>` +
+      `<span class="score">${p.score}</span>`;
+    ul.appendChild(li);
+  });
 
   $("startBtn").classList.toggle(
     "hidden",
@@ -373,6 +398,7 @@ socket.on("turnEnd", ({ word, reason }) => {
 });
 
 socket.on("gameEnd", ({ ranking }) => {
+  confetti();
   $("resultTitle").textContent = "🏆 Game Over!";
   const medals = ["🥇", "🥈", "🥉"];
   $("resultBody").innerHTML = ranking
