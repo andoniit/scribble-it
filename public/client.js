@@ -29,26 +29,50 @@ const COLORS = [
 ];
 
 // ---------- join flow ----------
-// invite links look like https://host/?room=abc123 — prefill the room
+function showJoinFields(show) {
+  $("modeButtons").classList.toggle("hidden", show);
+  $("joinFields").classList.toggle("hidden", !show);
+}
+
+// invite links look like https://host/?room=abc123 — jump straight to join
 const urlRoom = new URLSearchParams(location.search).get("room");
 if (urlRoom) {
   $("roomInput").value = urlRoom;
   const notice = $("roomNotice");
   notice.textContent = `You've been invited to room "${urlRoom}" — enter your name to join!`;
   notice.classList.remove("hidden");
+  showJoinFields(true);
 }
 
+$("joinModeBtn").addEventListener("click", () => {
+  showJoinFields(true);
+  $("roomInput").focus();
+});
+$("backBtn").addEventListener("click", () => showJoinFields(false));
 $("joinBtn").addEventListener("click", () => join());
-$("nameInput").addEventListener("keydown", (e) => e.key === "Enter" && join());
+$("roomInput").addEventListener("keydown", (e) => e.key === "Enter" && join());
+$("nameInput").addEventListener("keydown", (e) => {
+  // Enter on the name field joins if a room code is already visible/prefilled
+  if (e.key === "Enter" && !$("joinFields").classList.contains("hidden")) join();
+});
 $("createBtn").addEventListener("click", () => {
   const code = Math.random().toString(36).slice(2, 8);
   $("roomInput").value = code;
   join(code);
 });
+$("quickPlay").addEventListener("click", (e) => {
+  e.preventDefault();
+  join("lobby");
+});
 
 function join(roomOverride) {
   const name = $("nameInput").value.trim();
-  const roomId = (roomOverride || $("roomInput").value.trim() || "lobby").toLowerCase();
+  const typed = $("roomInput").value.trim();
+  if (!roomOverride && !typed) {
+    $("lobbyError").textContent = "Please enter a room code.";
+    return;
+  }
+  const roomId = (roomOverride || typed).toLowerCase();
   socket.emit("join", { name, roomId }, (res) => {
     if (res.error) {
       $("lobbyError").textContent = res.error;

@@ -13,11 +13,21 @@
       <h1>✋ Scribble It</h1>
       <p class="tagline">Like skribbl.io — but you draw in the air with your hand!</p>
       <input id="nameInput" type="text" maxlength="16" placeholder="Your name" autocomplete="off" />
-      <input id="roomInput" type="text" maxlength="20" placeholder="Room code (optional)" autocomplete="off" />
       <p id="roomNotice" class="room-notice hidden"></p>
-      <button id="joinBtn" class="big-btn">Play!</button>
-      <div class="divider">or</div>
-      <button id="createBtn" class="big-btn secondary">Create Private Room</button>
+
+      <div id="modeButtons">
+        <button id="createBtn" class="big-btn">🎨 Create a Room</button>
+        <div class="divider">or</div>
+        <button id="joinModeBtn" class="big-btn secondary">🔑 Join a Room</button>
+      </div>
+
+      <div id="joinFields" class="hidden">
+        <input id="roomInput" type="text" maxlength="20" placeholder="Enter room code" autocomplete="off" />
+        <button id="joinBtn" class="big-btn">Join Room</button>
+        <button id="backBtn" class="link-btn">← back</button>
+      </div>
+
+      <p class="quick-play"><a id="quickPlay" href="#">or quick-play in the public room</a></p>
       <p id="lobbyError" class="error"></p>
       <div class="how-to">
         <strong>How air-drawing works:</strong>

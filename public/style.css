@@ -101,6 +101,20 @@ body {
   margin: -4px 0 10px;
 }
 
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  margin-top: 10px;
+  font-size: 0.9rem;
+}
+.link-btn:hover { color: var(--text); }
+
+.quick-play { margin-top: 16px; font-size: 0.85rem; }
+.quick-play a { color: var(--muted); }
+.quick-play a:hover { color: var(--text); }
+
 /* ---------- invite box ---------- */
 #inviteBox {
   background: var(--panel-2);
