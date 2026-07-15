@@ -29,12 +29,26 @@ const COLORS = [
 ];
 
 // ---------- join flow ----------
-$("joinBtn").addEventListener("click", join);
-$("nameInput").addEventListener("keydown", (e) => e.key === "Enter" && join());
+// invite links look like https://host/?room=abc123 — prefill the room
+const urlRoom = new URLSearchParams(location.search).get("room");
+if (urlRoom) {
+  $("roomInput").value = urlRoom;
+  const notice = $("roomNotice");
+  notice.textContent = `You've been invited to room "${urlRoom}" — enter your name to join!`;
+  notice.classList.remove("hidden");
+}
 
-function join() {
+$("joinBtn").addEventListener("click", () => join());
+$("nameInput").addEventListener("keydown", (e) => e.key === "Enter" && join());
+$("createBtn").addEventListener("click", () => {
+  const code = Math.random().toString(36).slice(2, 8);
+  $("roomInput").value = code;
+  join(code);
+});
+
+function join(roomOverride) {
   const name = $("nameInput").value.trim();
-  const roomId = $("roomInput").value.trim() || "lobby";
+  const roomId = (roomOverride || $("roomInput").value.trim() || "lobby").toLowerCase();
   socket.emit("join", { name, roomId }, (res) => {
     if (res.error) {
       $("lobbyError").textContent = res.error;
@@ -43,8 +57,35 @@ function join() {
     selfId = res.selfId;
     lobby.classList.add("hidden");
     game.classList.remove("hidden");
+    setupInvite(res.roomId);
     $("chatInput").focus();
   });
+}
+
+function setupInvite(roomId) {
+  const isPublic = roomId === "lobby";
+  const link = isPublic ? location.origin : `${location.origin}/?room=${roomId}`;
+  history.replaceState(null, "", isPublic ? "/" : `/?room=${roomId}`);
+
+  $("roomCodeLabel").innerHTML = isPublic
+    ? "Public room"
+    : `Room code: <strong>${roomId}</strong>`;
+  $("inviteLink").value = link;
+  $("inviteBox").classList.remove("hidden");
+
+  const btn = $("copyLinkBtn");
+  btn.onclick = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      btn.textContent = "✅ Copied!";
+    } catch {
+      // clipboard blocked (e.g. non-HTTPS) — select the visible link instead
+      $("inviteLink").select();
+      document.execCommand("copy");
+      btn.textContent = "✅ Copied!";
+    }
+    setTimeout(() => (btn.textContent = "🔗 Copy invite link"), 2000);
+  };
 }
 
 // ---------- toolbar ----------

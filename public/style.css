@@ -74,6 +74,69 @@ body {
 
 .error { color: #f87171; margin-top: 10px; min-height: 1.2em; }
 
+.big-btn.secondary {
+  background: var(--panel-2);
+  border: 2px solid var(--accent);
+}
+
+.divider {
+  color: var(--muted);
+  font-size: 0.85rem;
+  margin: 12px 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--panel-2);
+}
+
+.room-notice {
+  color: var(--ok);
+  font-size: 0.9rem;
+  margin: -4px 0 10px;
+}
+
+/* ---------- invite box ---------- */
+#inviteBox {
+  background: var(--panel-2);
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+  text-align: center;
+}
+#roomCodeLabel {
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+#roomCodeLabel strong { color: var(--text); letter-spacing: 2px; }
+#copyLinkBtn {
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+#copyLinkBtn:hover { filter: brightness(1.15); }
+#inviteLink {
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 8px;
+  font-size: 0.75rem;
+  border: none;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--muted);
+}
+
 .how-to {
   margin-top: 20px;
   font-size: 0.85rem;
