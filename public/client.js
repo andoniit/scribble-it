@@ -201,10 +201,13 @@ function evtPoint(e) {
   return { x: cx / r.width, y: cy / r.height };
 }
 
+// lobby = free warm-up doodling for everyone; in-game only the drawer draws
+const canDrawNow = () => phase === "lobby" || (isDrawer && phase === "drawing");
+
 // ---------- mouse / touch drawing ----------
 let mouseDown = false;
 canvas.addEventListener("pointerdown", (e) => {
-  if (!isDrawer || phase !== "drawing") return;
+  if (!canDrawNow()) return;
   mouseDown = true;
   last = evtPoint(e);
 });
@@ -213,7 +216,7 @@ window.addEventListener("pointerup", () => {
   last = null;
 });
 canvas.addEventListener("pointermove", (e) => {
-  if (!mouseDown || !isDrawer || phase !== "drawing") return;
+  if (!mouseDown || !canDrawNow()) return;
   const p = evtPoint(e);
   if (last) {
     drawSegment(
@@ -295,7 +298,7 @@ function handleHand({ x, y, pinching, detected }) {
     }
   }
 
-  if (pinching && pinchTarget === "canvas" && isDrawer && phase === "drawing" && overCanvas) {
+  if (pinching && pinchTarget === "canvas" && canDrawNow() && overCanvas) {
     const p = { x: clamp01(cx), y: clamp01(cy) };
     if (handLast) {
       drawSegment(
@@ -412,7 +415,8 @@ socket.on("roomState", (s) => {
     setWordTiles(s.masked);
   }
 
-  updateTimer(s.timeLeft);
+  // only show the countdown in timed phases
+  updateTimer(s.phase === "drawing" || s.phase === "choosing" ? s.timeLeft : null);
 
   // players list
   const ul = $("playersList");
@@ -435,7 +439,19 @@ socket.on("roomState", (s) => {
     "hidden",
     !(s.phase === "lobby" || s.phase === "gameEnd") || s.players.length < 2
   );
-  toolbar.classList.toggle("hidden", !(isDrawer && s.phase === "drawing"));
+  toolbar.classList.toggle("hidden", !canDrawNow());
+
+  // contextual hint about the tools
+  const hint = $("canvasHint");
+  if (s.phase === "lobby") {
+    hint.textContent = "🖌 Warm-up! Everyone can doodle while waiting.";
+    hint.classList.remove("hidden");
+  } else if (s.phase === "drawing" && !isDrawer) {
+    hint.textContent = "🔍 Guess the word! Drawing tools unlock on your turn.";
+    hint.classList.remove("hidden");
+  } else {
+    hint.classList.add("hidden");
+  }
 
   if (s.phase !== "choosing") $("chooseModal").classList.add("hidden");
   if (s.phase === "drawing") $("resultModal").classList.add("hidden");

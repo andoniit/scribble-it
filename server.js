@@ -263,9 +263,13 @@ io.on("connection", (socket) => {
     beginDrawing(room, word);
   });
 
+  // in the lobby everyone can doodle to warm up; during a game only the drawer draws
+  const mayDraw = (room) =>
+    room.phase === "lobby" || (room.phase === "drawing" && socket.id === room.drawerId);
+
   socket.on("stroke", (seg) => {
     const room = joinedRoom;
-    if (!room || room.phase !== "drawing" || socket.id !== room.drawerId) return;
+    if (!room || !mayDraw(room)) return;
     // seg: {x0,y0,x1,y1,color,size} normalized 0..1
     if (typeof seg !== "object" || seg === null) return;
     room.strokes.push(seg);
@@ -275,7 +279,7 @@ io.on("connection", (socket) => {
 
   socket.on("clearCanvas", () => {
     const room = joinedRoom;
-    if (!room || room.phase !== "drawing" || socket.id !== room.drawerId) return;
+    if (!room || !mayDraw(room)) return;
     room.strokes = [];
     io.to(room.id).emit("clearCanvas");
   });
