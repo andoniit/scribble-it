@@ -138,6 +138,26 @@ $("eraserBtn").addEventListener("click", () => {
 });
 $("clearBtn").addEventListener("click", () => socket.emit("clearCanvas"));
 
+// gesture guide shown whenever air-draw turns on
+const gestureGuide = $("gestureGuide");
+let guideTimer = null;
+function showGestureGuide() {
+  clearTimeout(guideTimer);
+  gestureGuide.classList.remove("hidden", "fading");
+  // auto-fade after 10s so it never blocks the canvas for long
+  guideTimer = setTimeout(() => {
+    gestureGuide.classList.add("fading");
+    guideTimer = setTimeout(() => hideGestureGuide(), 700);
+  }, 10000);
+}
+function hideGestureGuide() {
+  clearTimeout(guideTimer);
+  guideTimer = null;
+  gestureGuide.classList.add("hidden");
+  gestureGuide.classList.remove("fading");
+}
+$("guideCloseBtn").addEventListener("click", hideGestureGuide);
+
 const camBtn = $("camToggleBtn");
 camBtn.addEventListener("click", async () => {
   if (isTracking()) {
@@ -147,6 +167,7 @@ camBtn.addEventListener("click", async () => {
     camBtn.textContent = "📷 Air-draw";
     handCursor.classList.add("hidden");
     setHandHover(null);
+    hideGestureGuide();
     camStatus.textContent = "camera off";
     return;
   }
@@ -159,6 +180,7 @@ camBtn.addEventListener("click", async () => {
     });
     camBtn.classList.add("on");
     camBtn.textContent = "🛑 Stop air-draw";
+    showGestureGuide();
   } catch (err) {
     camVideo.classList.remove("on");
     camBtn.textContent = "📷 Air-draw";

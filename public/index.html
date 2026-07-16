@@ -69,6 +69,17 @@
         <video id="camVideo" playsinline muted></video>
         <div id="camStatus">camera off</div>
         <div id="canvasHint" class="hidden"></div>
+
+        <div id="gestureGuide" class="hidden">
+          <h3>🤚 Air-draw is on!</h3>
+          <ul>
+            <li><span class="g-icon">☝️</span><div><strong>One finger</strong> — draw<br /><small>index up, middle folded</small></div></li>
+            <li><span class="g-icon">🖐</span><div><strong>Three fingers</strong> — erase<br /><small>index + middle + ring up</small></div></li>
+            <li><span class="g-icon">🤏</span><div><strong>Pinch</strong> — pick colors &amp; tools<br /><small>hover a button, pinch to click</small></div></li>
+            <li><span class="g-icon">✊</span><div><strong>Fist / open palm</strong> — just move<br /><small>nothing happens, reposition freely</small></div></li>
+          </ul>
+          <button id="guideCloseBtn">Got it, let's draw! 🎨</button>
+        </div>
         <button id="camToggleBtn" class="cam-btn" title="Toggle hand tracking">📷 Air-draw</button>
 
         <div id="toolbar" class="hidden">
