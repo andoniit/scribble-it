@@ -509,12 +509,17 @@ aside h2 {
   box-shadow: 0 0 22px rgba(255, 93, 162, 1);
 }
 #handCursor.erasing {
-  width: 42px;
-  height: 42px;
-  border-color: rgba(255, 255, 255, 0.9);
-  border-style: dashed;
-  background: rgba(255, 255, 255, 0.25);
-  box-shadow: 0 0 18px rgba(255, 255, 255, 0.5);
+  width: 40px;
+  height: 40px;
+  border-width: 4px;
+  border-color: var(--accent);
+  border-style: dotted;
+  background: rgba(124, 92, 255, 0.16);
+  box-shadow: 0 0 18px rgba(124, 92, 255, 0.55);
+}
+#handCursor.erasing-big {
+  width: 78px;
+  height: 78px;
 }
 #handCursor.pinching {
   background: var(--accent);

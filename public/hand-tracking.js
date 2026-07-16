@@ -3,10 +3,11 @@
 //
 // callbacks.onUpdate({ x, y, mode, detected }) — x/y normalized 0..1 in
 // mirrored (selfie) space. mode is one of:
-//   "draw"  — index finger pointing (middle finger folded)
-//   "erase" — three fingers extended (index + middle + ring)
-//   "pinch" — thumb + index pinched, used to click UI elements
-//   "hover" — anything else: move the cursor without acting
+//   "draw"       — one finger pointing (index up, middle folded)
+//   "eraseSmall" — three fingers (index + middle + ring)
+//   "eraseBig"   — full palm (all four fingers extended)
+//   "pinch"      — thumb + index pinched, used to click UI elements
+//   "hover"      — two fingers, fist, or anything else: move only
 
 const VISION_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
@@ -80,9 +81,12 @@ function detectMode(lm) {
   const index = fingerExtended(lm, 8, 6);
   const middle = fingerExtended(lm, 12, 10);
   const ring = fingerExtended(lm, 16, 14);
+  const pinky = fingerExtended(lm, 20, 18);
 
-  if (index && middle && ring) return "erase"; // three fingers up
-  if (index && !middle) return "draw"; // pointing
+  if (index && middle && ring && pinky) return "eraseBig"; // full palm
+  if (index && middle && ring && !pinky) return "eraseSmall"; // three fingers
+  if (index && middle && !ring) return "hover"; // two fingers — move only
+  if (index && !middle) return "draw"; // one finger — pointing
   return "hover";
 }
 

@@ -285,7 +285,8 @@ function handleHand({ x, y, mode, detected }) {
 
   handCursor.classList.remove("hidden");
   handCursor.classList.toggle("drawing", mode === "draw");
-  handCursor.classList.toggle("erasing", mode === "erase");
+  handCursor.classList.toggle("erasing", mode === "eraseSmall" || mode === "eraseBig");
+  handCursor.classList.toggle("erasing-big", mode === "eraseBig");
   handCursor.classList.toggle("pinching", mode === "pinch");
   handCursor.style.left = `${px - wrap.left}px`;
   handCursor.style.top = `${py - wrap.top}px`;
@@ -318,15 +319,19 @@ function handleHand({ x, y, mode, detected }) {
     }
   }
 
-  const acting = mode === "draw" || mode === "erase";
+  const erasing = mode === "eraseSmall" || mode === "eraseBig";
+  const acting = mode === "draw" || erasing;
   if (acting && canDrawNow() && overCanvas) {
     const p = { x: clamp01(cx), y: clamp01(cy) };
-    // don't connect a draw stroke to an erase stroke (or vice versa)
+    // don't connect a draw stroke to an erase stroke (or a small to a big one)
     if (handLast && handLastMode === mode) {
-      const seg =
-        mode === "erase"
-          ? { x0: handLast.x, y0: handLast.y, x1: p.x, y1: p.y, color: CANVAS_BG, size: Math.max(brushSize * 3, 26) }
-          : { x0: handLast.x, y0: handLast.y, x1: p.x, y1: p.y, color: penColor(), size: penSize() };
+      let seg;
+      if (erasing) {
+        const eraseSize = mode === "eraseBig" ? Math.max(brushSize * 7, 64) : Math.max(brushSize * 2.5, 24);
+        seg = { x0: handLast.x, y0: handLast.y, x1: p.x, y1: p.y, color: CANVAS_BG, size: eraseSize };
+      } else {
+        seg = { x0: handLast.x, y0: handLast.y, x1: p.x, y1: p.y, color: penColor(), size: penSize() };
+      }
       drawSegment(seg, true);
     }
     handLast = p;

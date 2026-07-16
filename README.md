@@ -7,10 +7,11 @@ A skribbl.io-style multiplayer drawing & guessing game — except you draw **in 
 - **Multiplayer rooms** — join the public room, or hit **Create Private Room** to get a shareable invite link (`/?room=abc123`) your friends can open to join you directly. 2+ players to start.
 - **3 rounds** — each turn, the drawer picks one of 3 words and has 80 seconds to draw it while everyone else guesses in chat. Faster guesses score more; letter hints are revealed over time.
 - **Air drawing** — click the 📷 Air-draw button to enable hand tracking (MediaPipe HandLandmarker):
-  - ☝️ **Point** with one finger (index up, middle folded) to draw
-  - 🖐 **Three fingers up** (index + middle + ring) to erase as you move
+  - ☝️ **One finger** (index up, middle folded) to draw
+  - ✌️ **Two fingers** (index + middle) to move the cursor without drawing
+  - 🤟 **Three fingers** (index + middle + ring) for a small eraser
+  - 🖐 **Full palm** (all fingers open) for a big eraser
   - 🤏 **Pinch** thumb + index over a color, tool, or the brush slider to select it
-  - ✊ Anything else just moves the cursor
 - **Mouse/touch fallback** — regular drawing always works too.
 
 ## Run it
