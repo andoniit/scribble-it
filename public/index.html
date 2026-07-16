@@ -100,6 +100,31 @@
       </aside>
     </main>
 
+    <!-- game settings modal (opens when starting a game) -->
+    <div id="settingsModal" class="overlay hidden">
+      <div class="lobby-card settings-card">
+        <h2>⚙️ Game Settings</h2>
+        <div class="setting-row">
+          <label>⏱ Time per turn</label>
+          <div class="seg" id="setTime"></div>
+        </div>
+        <div class="setting-row">
+          <label>🔁 Rounds</label>
+          <div class="seg" id="setRounds"></div>
+        </div>
+        <div class="setting-row">
+          <label>🎯 Word difficulty</label>
+          <div class="seg" id="setDiff"></div>
+        </div>
+        <div class="setting-row">
+          <label>🗂 Word categories</label>
+          <div id="setCats"></div>
+        </div>
+        <button id="settingsStartBtn" class="big-btn">Start Game! 🚀</button>
+        <button id="settingsCancelBtn" class="link-btn">cancel</button>
+      </div>
+    </div>
+
     <!-- word chooser modal -->
     <div id="chooseModal" class="overlay hidden">
       <div class="lobby-card">

@@ -2,7 +2,7 @@ const path = require("path");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
-const WORDS = require("./words");
+const WORD_BANK = require("./words");
 
 const app = express();
 const server = http.createServer(app);
@@ -13,11 +13,49 @@ app.use(express.static(path.join(__dirname, "public")));
 const PORT = process.env.PORT || 3010;
 
 // ---------- Game constants ----------
-const ROUNDS_PER_GAME = 3;
 const CHOOSE_TIME = 15; // seconds to pick a word
-const DRAW_TIME = 80; // seconds to draw
 const WORD_CHOICES = 3;
 const MIN_PLAYERS = 2;
+
+// ---------- Game settings (chosen by whoever starts the game) ----------
+const DIFFICULTIES = ["easy", "medium", "hard"];
+const DRAW_TIMES = [30, 60, 80, 120, 150];
+const ROUND_OPTIONS = [1, 2, 3, 5];
+const DEFAULT_SETTINGS = {
+  drawTime: 80,
+  rounds: 3,
+  difficulty: "all", // "easy" | "medium" | "hard" | "all"
+  categories: ["classic"],
+};
+
+function sanitizeSettings(s) {
+  const out = { ...DEFAULT_SETTINGS };
+  if (s && typeof s === "object") {
+    const t = parseInt(s.drawTime, 10);
+    if (DRAW_TIMES.includes(t)) out.drawTime = t;
+    const r = parseInt(s.rounds, 10);
+    if (ROUND_OPTIONS.includes(r)) out.rounds = r;
+    if (DIFFICULTIES.includes(s.difficulty) || s.difficulty === "all") out.difficulty = s.difficulty;
+    if (Array.isArray(s.categories)) {
+      const cats = [...new Set(s.categories)].filter((c) => WORD_BANK[c]);
+      if (cats.length) out.categories = cats;
+    }
+  }
+  return out;
+}
+
+function wordPool(settings) {
+  const diffs = settings.difficulty === "all" ? DIFFICULTIES : [settings.difficulty];
+  const pool = [];
+  for (const cat of settings.categories) {
+    for (const d of diffs) pool.push(...WORD_BANK[cat][d]);
+  }
+  // safety net: never let a game run out of words
+  if (pool.length < WORD_CHOICES) {
+    for (const cat of Object.values(WORD_BANK)) for (const d of DIFFICULTIES) pool.push(...cat[d]);
+  }
+  return pool;
+}
 
 // ---------- Room state ----------
 /** roomId -> room */
@@ -38,6 +76,7 @@ function createRoom(roomId) {
     timeLeft: 0,
     drawnThisRound: new Set(), // player ids who already drew this round
     strokes: [], // replay buffer for late joiners
+    settings: { ...DEFAULT_SETTINGS },
   };
   rooms.set(roomId, room);
   return room;
@@ -65,11 +104,12 @@ function broadcastState(room) {
   io.to(room.id).emit("roomState", {
     phase: room.phase,
     round: room.round,
-    maxRounds: ROUNDS_PER_GAME,
+    maxRounds: room.settings.rounds,
     players: publicPlayers(room),
     drawerId: room.drawerId,
     timeLeft: room.timeLeft,
     masked: room.phase === "drawing" ? maskedWord(room) : "",
+    settings: room.settings,
   });
 }
 
@@ -80,15 +120,33 @@ function clearTimer(room) {
   }
 }
 
-function pickWords(n) {
-  const picked = new Set();
-  while (picked.size < n) {
-    picked.add(WORDS[Math.floor(Math.random() * WORDS.length)]);
+function pickWords(room, n) {
+  const pool = [...new Set(wordPool(room.settings))];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
   }
-  return [...picked];
+  return pool.slice(0, Math.min(n, pool.length));
 }
 
-function startGame(room) {
+const CATEGORY_LABELS = {
+  classic: "Classic",
+  food: "Food",
+  animals: "Animals",
+  sports: "Sports",
+  engineering: "Engineering",
+  adult: "After Dark 🔞",
+};
+
+function startGame(room, rawSettings) {
+  room.settings = sanitizeSettings(rawSettings);
+  const s = room.settings;
+  io.to(room.id).emit(
+    "systemMessage",
+    `Game on! ${s.rounds} round${s.rounds > 1 ? "s" : ""} · ${s.drawTime}s per turn · ` +
+      `${s.difficulty === "all" ? "mixed" : s.difficulty} difficulty · ` +
+      s.categories.map((c) => CATEGORY_LABELS[c] || c).join(", ")
+  );
   room.round = 1;
   room.players.forEach((p) => (p.score = 0));
   room.drawnThisRound = new Set();
@@ -107,7 +165,7 @@ function nextTurn(room) {
   if (remaining.length === 0) {
     room.round++;
     room.drawnThisRound = new Set();
-    if (room.round > ROUNDS_PER_GAME) {
+    if (room.round > room.settings.rounds) {
       endGame(room);
       return;
     }
@@ -118,7 +176,7 @@ function nextTurn(room) {
   const drawer = candidates[0];
   room.drawerId = drawer.id;
   room.drawnThisRound.add(drawer.id);
-  room.wordChoices = pickWords(WORD_CHOICES);
+  room.wordChoices = pickWords(room, WORD_CHOICES);
   room.phase = "choosing";
   room.timeLeft = CHOOSE_TIME;
 
@@ -138,9 +196,10 @@ function nextTurn(room) {
 
 function beginDrawing(room, word) {
   clearTimer(room);
+  const drawTime = room.settings.drawTime;
   room.word = word;
   room.phase = "drawing";
-  room.timeLeft = DRAW_TIME;
+  room.timeLeft = drawTime;
   room.revealed = new Set();
 
   const drawer = room.players.find((p) => p.id === room.drawerId);
@@ -148,7 +207,7 @@ function beginDrawing(room, word) {
   io.to(room.id).emit("systemMessage", `${drawer ? drawer.name : "Someone"} is drawing now!`);
   broadcastState(room);
 
-  const hintAt = [Math.floor(DRAW_TIME * 0.5), Math.floor(DRAW_TIME * 0.25)];
+  const hintAt = [Math.floor(drawTime * 0.5), Math.floor(drawTime * 0.25)];
   room.timer = setInterval(() => {
     room.timeLeft--;
 
@@ -246,14 +305,14 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("startGame", () => {
+  socket.on("startGame", (settings) => {
     const room = joinedRoom;
     if (!room || room.phase !== "lobby" && room.phase !== "gameEnd") return;
     if (room.players.length < MIN_PLAYERS) {
       socket.emit("systemMessage", `Need at least ${MIN_PLAYERS} players to start.`);
       return;
     }
-    startGame(room);
+    startGame(room, settings);
   });
 
   socket.on("chooseWord", (word) => {
@@ -304,7 +363,7 @@ io.on("connection", (socket) => {
     ) {
       player.guessedAt = Date.now();
       // score: more time left = more points
-      const points = 50 + Math.ceil((room.timeLeft / DRAW_TIME) * 200);
+      const points = 50 + Math.ceil((room.timeLeft / room.settings.drawTime) * 200);
       player.score += points;
       const drawer = room.players.find((p) => p.id === room.drawerId);
       if (drawer) drawer.score += 30;

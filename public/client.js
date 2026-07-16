@@ -426,7 +426,76 @@ function confetti(count = 130) {
 }
 
 // ---------- socket events ----------
-$("startBtn").addEventListener("click", () => socket.emit("startGame"));
+// ---------- game settings ----------
+const CATEGORIES = [
+  { id: "classic", label: "🎨 Classic" },
+  { id: "food", label: "🍕 Food" },
+  { id: "animals", label: "🐾 Animals" },
+  { id: "sports", label: "⚽ Sports" },
+  { id: "engineering", label: "⚙️ Engineering" },
+  { id: "adult", label: "🔞 After Dark" },
+];
+const gameSettings = {
+  drawTime: 80,
+  rounds: 3,
+  difficulty: "all",
+  categories: ["classic"],
+};
+
+// single-select segmented control
+function buildSeg(id, options, key) {
+  const seg = $(id);
+  options.forEach(({ value, label }) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.classList.toggle("active", gameSettings[key] === value);
+    b.addEventListener("click", () => {
+      gameSettings[key] = value;
+      seg.querySelectorAll("button").forEach((x) => x.classList.remove("active"));
+      b.classList.add("active");
+    });
+    seg.appendChild(b);
+  });
+}
+
+buildSeg("setTime", [30, 60, 80, 120, 150].map((v) => ({ value: v, label: `${v}s` })), "drawTime");
+buildSeg("setRounds", [1, 2, 3, 5].map((v) => ({ value: v, label: `${v}` })), "rounds");
+buildSeg(
+  "setDiff",
+  [
+    { value: "easy", label: "Easy" },
+    { value: "medium", label: "Medium" },
+    { value: "hard", label: "Hard" },
+    { value: "all", label: "Mixed" },
+  ],
+  "difficulty"
+);
+
+// multi-select category chips (at least one must stay on)
+CATEGORIES.forEach(({ id, label }) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "cat-chip" + (id === "adult" ? " adult" : "");
+  b.textContent = label;
+  b.classList.toggle("active", gameSettings.categories.includes(id));
+  b.addEventListener("click", () => {
+    const on = gameSettings.categories.includes(id);
+    if (on && gameSettings.categories.length === 1) return; // keep at least one
+    gameSettings.categories = on
+      ? gameSettings.categories.filter((c) => c !== id)
+      : [...gameSettings.categories, id];
+    b.classList.toggle("active", !on);
+  });
+  $("setCats").appendChild(b);
+});
+
+$("startBtn").addEventListener("click", () => $("settingsModal").classList.remove("hidden"));
+$("settingsCancelBtn").addEventListener("click", () => $("settingsModal").classList.add("hidden"));
+$("settingsStartBtn").addEventListener("click", () => {
+  $("settingsModal").classList.add("hidden");
+  socket.emit("startGame", gameSettings);
+});
 
 socket.on("roomState", (s) => {
   phase = s.phase;
@@ -484,6 +553,8 @@ socket.on("roomState", (s) => {
 
   if (s.phase !== "choosing") $("chooseModal").classList.add("hidden");
   if (s.phase === "drawing") $("resultModal").classList.add("hidden");
+  // someone else may have started the game while this player had settings open
+  if (s.phase !== "lobby" && s.phase !== "gameEnd") $("settingsModal").classList.add("hidden");
 });
 
 socket.on("tick", ({ timeLeft, masked }) => {
