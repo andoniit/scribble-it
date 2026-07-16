@@ -185,8 +185,10 @@ function clearLocal() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
+const CANVAS_BG = "#fffdf8"; // must match #drawCanvas background in style.css
+
 function penColor() {
-  return erasing ? "#ffffff" : color;
+  return erasing ? CANVAS_BG : color;
 }
 
 function penSize() {
@@ -228,11 +230,11 @@ canvas.addEventListener("pointermove", (e) => {
 });
 
 // ---------- hand drawing & hand-controlled UI ----------
-// The hand cursor roams the whole canvas area (canvas + toolbar). Pinching
-// over the canvas draws; pinching over a button/color/slider activates it.
-let handLast = null; // last canvas-space point while drawing
-let pinchWas = false;
-let pinchTarget = null; // "canvas" | "ui" — what the current pinch grabbed
+// Gestures: ☝️ point (one finger) draws, 🖐 three fingers erases,
+// 🤏 pinch clicks buttons/colors/slider under the cursor.
+let handLast = null; // last canvas-space point while drawing/erasing
+let handLastMode = null;
+let modeWas = "hover";
 let lastPinchClick = 0;
 let hoverEl = null;
 
@@ -245,12 +247,12 @@ function setHandHover(el) {
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 
-function handleHand({ x, y, pinching, detected }) {
+function handleHand({ x, y, mode, detected }) {
   if (!detected) {
     handCursor.classList.add("hidden");
     handLast = null;
-    pinchWas = false;
-    pinchTarget = null;
+    handLastMode = null;
+    modeWas = "hover";
     setHandHover(null);
     return;
   }
@@ -260,7 +262,9 @@ function handleHand({ x, y, pinching, detected }) {
   const py = wrap.top + clamp01(y) * wrap.height;
 
   handCursor.classList.remove("hidden");
-  handCursor.classList.toggle("pinching", pinching);
+  handCursor.classList.toggle("drawing", mode === "draw");
+  handCursor.classList.toggle("erasing", mode === "erase");
+  handCursor.classList.toggle("pinching", mode === "pinch");
   handCursor.style.left = `${px - wrap.left}px`;
   handCursor.style.top = `${py - wrap.top}px`;
 
@@ -275,44 +279,42 @@ function handleHand({ x, y, pinching, detected }) {
   const clickable = under ? under.closest("button, a, .color-swatch") : null;
   setHandHover(overCanvas ? null : clickable);
 
-  if (pinching && !pinchWas) {
-    // pinch just started — decide what it grabbed
-    if (overCanvas) {
-      pinchTarget = "canvas";
-    } else {
-      pinchTarget = "ui";
-      const now = Date.now();
-      if (now - lastPinchClick > 450) {
-        if (clickable) {
-          lastPinchClick = now;
-          clickable.click();
-        } else if (under && under.id === "brushSize") {
-          // pinch on the slider sets brush size from horizontal position
-          lastPinchClick = now;
-          const sr = under.getBoundingClientRect();
-          const frac = clamp01((px - sr.left) / sr.width);
-          under.value = Math.round(2 + frac * 28);
-          under.dispatchEvent(new Event("input", { bubbles: true }));
-        }
+  if (mode === "pinch" && modeWas !== "pinch" && !overCanvas) {
+    const now = Date.now();
+    if (now - lastPinchClick > 450) {
+      if (clickable) {
+        lastPinchClick = now;
+        clickable.click();
+      } else if (under && under.id === "brushSize") {
+        // pinch on the slider sets brush size from horizontal position
+        lastPinchClick = now;
+        const sr = under.getBoundingClientRect();
+        const frac = clamp01((px - sr.left) / sr.width);
+        under.value = Math.round(2 + frac * 28);
+        under.dispatchEvent(new Event("input", { bubbles: true }));
       }
     }
   }
 
-  if (pinching && pinchTarget === "canvas" && canDrawNow() && overCanvas) {
+  const acting = mode === "draw" || mode === "erase";
+  if (acting && canDrawNow() && overCanvas) {
     const p = { x: clamp01(cx), y: clamp01(cy) };
-    if (handLast) {
-      drawSegment(
-        { x0: handLast.x, y0: handLast.y, x1: p.x, y1: p.y, color: penColor(), size: penSize() },
-        true
-      );
+    // don't connect a draw stroke to an erase stroke (or vice versa)
+    if (handLast && handLastMode === mode) {
+      const seg =
+        mode === "erase"
+          ? { x0: handLast.x, y0: handLast.y, x1: p.x, y1: p.y, color: CANVAS_BG, size: Math.max(brushSize * 3, 26) }
+          : { x0: handLast.x, y0: handLast.y, x1: p.x, y1: p.y, color: penColor(), size: penSize() };
+      drawSegment(seg, true);
     }
     handLast = p;
+    handLastMode = mode;
   } else {
     handLast = null;
+    handLastMode = null;
   }
 
-  if (!pinching) pinchTarget = null;
-  pinchWas = pinching;
+  modeWas = mode;
 }
 
 // ---------- chat ----------

@@ -504,9 +504,22 @@ aside h2 {
   box-shadow: 0 0 14px rgba(255, 93, 162, 0.7);
   z-index: 20;
 }
-#handCursor.pinching {
+#handCursor.drawing {
   background: var(--accent-2);
   box-shadow: 0 0 22px rgba(255, 93, 162, 1);
+}
+#handCursor.erasing {
+  width: 42px;
+  height: 42px;
+  border-color: rgba(255, 255, 255, 0.9);
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.25);
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.5);
+}
+#handCursor.pinching {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 22px rgba(124, 92, 255, 1);
 }
 
 /* element the hand cursor is hovering — pinch to activate */

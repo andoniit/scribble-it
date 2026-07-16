@@ -1,21 +1,33 @@
 // Hand tracking via MediaPipe HandLandmarker (tasks-vision).
 // Exposes startHandTracking(video, callbacks) / stopHandTracking().
-// callbacks.onUpdate({ x, y, pinching, detected }) — x/y normalized 0..1 in
-// mirrored (selfie) space, so moving your hand right moves the cursor right.
+//
+// callbacks.onUpdate({ x, y, mode, detected }) — x/y normalized 0..1 in
+// mirrored (selfie) space. mode is one of:
+//   "draw"  — index finger pointing (middle finger folded)
+//   "erase" — three fingers extended (index + middle + ring)
+//   "pinch" — thumb + index pinched, used to click UI elements
+//   "hover" — anything else: move the cursor without acting
 
 const VISION_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
 // Pinch hysteresis (ratio of thumb-index distance to hand size): the pinch
 // turns ON only below PINCH_ON and OFF only above PINCH_OFF, so a hand
-// hovering right at one threshold can't flicker the pen up and down.
+// hovering right at one threshold can't flicker.
 const PINCH_ON = 0.38;
 const PINCH_OFF = 0.55;
+
+// a gesture must hold for this many consecutive frames before the mode
+// switches — kills flicker at gesture boundaries (~2 frames ≈ 70ms)
+const MODE_STABLE_FRAMES = 2;
 
 let landmarker = null;
 let running = false;
 let rafId = null;
 let stream = null;
 let pinched = false;
+let mode = "hover";
+let pendingMode = null;
+let pendingCount = 0;
 
 // adaptive exponential smoothing: heavy smoothing for slow/precise moves,
 // light smoothing for fast strokes so the line doesn't lag behind the hand
@@ -48,6 +60,52 @@ function dist(a, b) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
+// a finger counts as extended when its tip is clearly further from the
+// wrist than its middle (PIP) joint — orientation independent
+function fingerExtended(lm, tipIdx, pipIdx) {
+  const wrist = lm[0];
+  return dist(lm[tipIdx], wrist) > dist(lm[pipIdx], wrist) * 1.15;
+}
+
+function detectMode(lm) {
+  const handSize = dist(lm[0], lm[9]) || 1e-6;
+  const pinchRatio = dist(lm[8], lm[4]) / handSize;
+  if (pinched) {
+    if (pinchRatio > PINCH_OFF) pinched = false;
+  } else if (pinchRatio < PINCH_ON) {
+    pinched = true;
+  }
+  if (pinched) return "pinch";
+
+  const index = fingerExtended(lm, 8, 6);
+  const middle = fingerExtended(lm, 12, 10);
+  const ring = fingerExtended(lm, 16, 14);
+
+  if (index && middle && ring) return "erase"; // three fingers up
+  if (index && !middle) return "draw"; // pointing
+  return "hover";
+}
+
+// debounce mode switches so a single noisy frame can't lift or drop the pen
+function stableMode(raw) {
+  if (raw === mode) {
+    pendingMode = null;
+    pendingCount = 0;
+    return mode;
+  }
+  if (raw === pendingMode) {
+    if (++pendingCount >= MODE_STABLE_FRAMES) {
+      mode = raw;
+      pendingMode = null;
+      pendingCount = 0;
+    }
+  } else {
+    pendingMode = raw;
+    pendingCount = 1;
+  }
+  return mode;
+}
+
 export async function startHandTracking(video, { onUpdate, onStatus }) {
   if (running) return;
   onStatus?.("loading hand model...");
@@ -63,6 +121,7 @@ export async function startHandTracking(video, { onUpdate, onStatus }) {
 
   running = true;
   pinched = false;
+  mode = "hover";
   onStatus?.("hand tracking on 🤚");
 
   let lastVideoTime = -1;
@@ -79,20 +138,9 @@ export async function startHandTracking(video, { onUpdate, onStatus }) {
       if (result && result.landmarks && result.landmarks.length > 0) {
         const lm = result.landmarks[0];
         const indexTip = lm[8];
-        const thumbTip = lm[4];
-        // hand size reference: wrist -> middle finger MCP, makes the pinch
-        // threshold distance-from-camera invariant
-        const handSize = dist(lm[0], lm[9]) || 1e-6;
-        const pinchRatio = dist(indexTip, thumbTip) / handSize;
-        if (pinched) {
-          if (pinchRatio > PINCH_OFF) pinched = false;
-        } else if (pinchRatio < PINCH_ON) {
-          pinched = true;
-        }
 
-        // midpoint of pinch is steadier than the fingertip alone
-        const rawX = 1 - (indexTip.x + thumbTip.x) / 2; // mirror for selfie view
-        const rawY = (indexTip.y + thumbTip.y) / 2;
+        const rawX = 1 - indexTip.x; // mirror for selfie view
+        const rawY = indexTip.y;
 
         if (smooth.x === null) {
           smooth.x = rawX;
@@ -105,10 +153,13 @@ export async function startHandTracking(video, { onUpdate, onStatus }) {
           smooth.y += alpha * (rawY - smooth.y);
         }
 
-        onUpdate({ x: smooth.x, y: smooth.y, pinching: pinched, detected: true });
+        onUpdate({ x: smooth.x, y: smooth.y, mode: stableMode(detectMode(lm)), detected: true });
       } else {
         smooth.x = smooth.y = null;
         pinched = false;
+        mode = "hover";
+        pendingMode = null;
+        pendingCount = 0;
         onUpdate({ detected: false });
       }
     }
@@ -128,6 +179,7 @@ export function stopHandTracking(video) {
   if (video) video.srcObject = null;
   smooth.x = smooth.y = null;
   pinched = false;
+  mode = "hover";
 }
 
 export function isTracking() {
