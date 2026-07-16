@@ -1,4 +1,5 @@
 import { startHandTracking, stopHandTracking, isTracking } from "./hand-tracking.js";
+import { sfx } from "./sounds.js";
 
 const socket = io();
 
@@ -79,6 +80,8 @@ function join(roomOverride) {
       return;
     }
     selfId = res.selfId;
+    sfx.unlock();
+    sfx.pop();
     lobby.classList.add("hidden");
     game.classList.remove("hidden");
     setupInvite(res.roomId);
@@ -135,22 +138,30 @@ $("eraserBtn").addEventListener("click", () => {
 });
 $("clearBtn").addEventListener("click", () => socket.emit("clearCanvas"));
 
-$("camToggleBtn").addEventListener("click", async () => {
+const camBtn = $("camToggleBtn");
+camBtn.addEventListener("click", async () => {
   if (isTracking()) {
     stopHandTracking(camVideo);
     camVideo.classList.remove("on");
+    camBtn.classList.remove("on");
+    camBtn.textContent = "📷 Air-draw";
     handCursor.classList.add("hidden");
+    setHandHover(null);
     camStatus.textContent = "camera off";
     return;
   }
   try {
     camVideo.classList.add("on");
+    camBtn.textContent = "⏳ starting...";
     await startHandTracking(camVideo, {
       onStatus: (s) => (camStatus.textContent = s),
       onUpdate: handleHand,
     });
+    camBtn.classList.add("on");
+    camBtn.textContent = "🛑 Stop air-draw";
   } catch (err) {
     camVideo.classList.remove("on");
+    camBtn.textContent = "📷 Air-draw";
     camStatus.textContent = "camera unavailable — use mouse";
     console.warn("hand tracking failed:", err);
   }
@@ -213,39 +224,92 @@ canvas.addEventListener("pointermove", (e) => {
   last = p;
 });
 
-// ---------- hand drawing ----------
-let handLast = null;
+// ---------- hand drawing & hand-controlled UI ----------
+// The hand cursor roams the whole canvas area (canvas + toolbar). Pinching
+// over the canvas draws; pinching over a button/color/slider activates it.
+let handLast = null; // last canvas-space point while drawing
+let pinchWas = false;
+let pinchTarget = null; // "canvas" | "ui" — what the current pinch grabbed
+let lastPinchClick = 0;
+let hoverEl = null;
+
+function setHandHover(el) {
+  if (hoverEl === el) return;
+  hoverEl?.classList.remove("hand-hover");
+  hoverEl = el;
+  hoverEl?.classList.add("hand-hover");
+}
+
+const clamp01 = (v) => Math.min(1, Math.max(0, v));
+
 function handleHand({ x, y, pinching, detected }) {
   if (!detected) {
     handCursor.classList.add("hidden");
     handLast = null;
+    pinchWas = false;
+    pinchTarget = null;
+    setHandHover(null);
     return;
   }
 
-  // position the cursor over the canvas
   const wrap = $("canvasWrap").getBoundingClientRect();
-  const r = canvas.getBoundingClientRect();
+  const px = wrap.left + clamp01(x) * wrap.width;
+  const py = wrap.top + clamp01(y) * wrap.height;
+
   handCursor.classList.remove("hidden");
   handCursor.classList.toggle("pinching", pinching);
-  handCursor.style.left = `${r.left - wrap.left + x * r.width}px`;
-  handCursor.style.top = `${r.top - wrap.top + y * r.height}px`;
+  handCursor.style.left = `${px - wrap.left}px`;
+  handCursor.style.top = `${py - wrap.top}px`;
 
-  if (!isDrawer || phase !== "drawing") {
-    handLast = null;
-    return;
+  // canvas-space normalized coordinates
+  const r = canvas.getBoundingClientRect();
+  const cx = (px - r.left) / r.width;
+  const cy = (py - r.top) / r.height;
+  const overCanvas = cx >= 0 && cx <= 1 && cy >= 0 && cy <= 1;
+
+  // hover feedback + pinch-to-click for anything under the cursor
+  const under = document.elementFromPoint(px, py);
+  const clickable = under ? under.closest("button, a, .color-swatch") : null;
+  setHandHover(overCanvas ? null : clickable);
+
+  if (pinching && !pinchWas) {
+    // pinch just started — decide what it grabbed
+    if (overCanvas) {
+      pinchTarget = "canvas";
+    } else {
+      pinchTarget = "ui";
+      const now = Date.now();
+      if (now - lastPinchClick > 450) {
+        if (clickable) {
+          lastPinchClick = now;
+          clickable.click();
+        } else if (under && under.id === "brushSize") {
+          // pinch on the slider sets brush size from horizontal position
+          lastPinchClick = now;
+          const sr = under.getBoundingClientRect();
+          const frac = clamp01((px - sr.left) / sr.width);
+          under.value = Math.round(2 + frac * 28);
+          under.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      }
+    }
   }
 
-  if (pinching) {
+  if (pinching && pinchTarget === "canvas" && isDrawer && phase === "drawing" && overCanvas) {
+    const p = { x: clamp01(cx), y: clamp01(cy) };
     if (handLast) {
       drawSegment(
-        { x0: handLast.x, y0: handLast.y, x1: x, y1: y, color: penColor(), size: penSize() },
+        { x0: handLast.x, y0: handLast.y, x1: p.x, y1: p.y, color: penColor(), size: penSize() },
         true
       );
     }
-    handLast = { x, y };
+    handLast = p;
   } else {
     handLast = null;
   }
+
+  if (!pinching) pinchTarget = null;
+  pinchWas = pinching;
 }
 
 // ---------- chat ----------
@@ -282,11 +346,38 @@ const esc = (s) =>
 
 // consistent emoji avatar per player, derived from the name so every client agrees
 const AVATARS = ["🦊", "🐼", "🐸", "🦄", "🐙", "🐯", "🐝", "🐧", "🦁", "🐢", "🐰", "🦖", "🐨", "🐹", "🦉", "🐳"];
-function avatarFor(name) {
+function nameHash(name) {
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  return AVATARS[h % AVATARS.length];
+  return h;
 }
+const avatarFor = (name) => AVATARS[nameHash(name) % AVATARS.length];
+const hueFor = (name) => nameHash(name) % 360;
+
+// word shown as letter tiles (blanks for hidden letters)
+function setWordTiles(str, label = "") {
+  $("wordDisplay").innerHTML =
+    (label ? `<span class="draw-label">${label}</span>` : "") +
+    str
+      .split("")
+      .map((ch) => {
+        if (ch === " " || ch === "-") return '<span class="tile gap"></span>';
+        if (ch === "_") return '<span class="tile blank"></span>';
+        return `<span class="tile">${esc(ch)}</span>`;
+      })
+      .join("");
+}
+
+// ---------- sounds ----------
+const muteBtn = $("muteBtn");
+muteBtn.textContent = sfx.isMuted() ? "🔇" : "🔊";
+muteBtn.addEventListener("click", () => {
+  muteBtn.textContent = sfx.toggleMute() ? "🔇" : "🔊";
+});
+// every button press (mouse OR hand-pinch) gives a soft click
+document.addEventListener("click", (e) => {
+  if (e.target.closest("button, a, .color-swatch")) sfx.click();
+});
 
 function confetti(count = 130) {
   const colors = ["#7c5cff", "#ff5da2", "#ffc83d", "#4ade80", "#22d3ee", "#fb7185"];
@@ -318,7 +409,7 @@ socket.on("roomState", (s) => {
   } else if (s.phase === "choosing") {
     $("wordDisplay").textContent = "Choosing a word...";
   } else if (s.phase === "drawing" && !isDrawer) {
-    $("wordDisplay").textContent = s.masked;
+    setWordTiles(s.masked);
   }
 
   updateTimer(s.timeLeft);
@@ -332,8 +423,9 @@ socket.on("roomState", (s) => {
     const li = document.createElement("li");
     li.className = (p.guessed ? "guessed " : "") + (p.drawing ? "drawing" : "");
     const crown = p.score === topScore && topScore > 0 ? "👑 " : "";
+    const h = hueFor(p.name);
     li.innerHTML =
-      `<span class="avatar">${avatarFor(p.name)}</span>` +
+      `<span class="avatar" style="background: linear-gradient(145deg, hsl(${h} 80% 62% / 0.55), hsl(${(h + 60) % 360} 80% 62% / 0.4))">${avatarFor(p.name)}</span>` +
       `<span class="player-name">${crown}${p.drawing ? "✏️ " : ""}${esc(p.name)}${p.id === selfId ? " <small>(you)</small>" : ""}</span>` +
       `<span class="score">${p.score}</span>`;
     ul.appendChild(li);
@@ -351,7 +443,8 @@ socket.on("roomState", (s) => {
 
 socket.on("tick", ({ timeLeft, masked }) => {
   updateTimer(timeLeft);
-  if (!isDrawer && phase === "drawing") $("wordDisplay").textContent = masked;
+  if (!isDrawer && phase === "drawing") setWordTiles(masked);
+  if (phase === "drawing" && timeLeft > 0 && timeLeft <= 10) sfx.tick();
 });
 
 function updateTimer(t) {
@@ -360,6 +453,7 @@ function updateTimer(t) {
 }
 
 socket.on("chooseWord", ({ choices }) => {
+  sfx.yourTurn();
   const div = $("wordChoices");
   div.innerHTML = "";
   choices.forEach((w) => {
@@ -375,7 +469,7 @@ socket.on("chooseWord", ({ choices }) => {
 });
 
 socket.on("yourWord", (word) => {
-  $("wordDisplay").textContent = `Draw: ${word}`;
+  setWordTiles(word, "Draw:");
 });
 
 socket.on("stroke", (seg) => drawSegment(seg, false));
@@ -386,11 +480,14 @@ socket.on("chat", ({ name, text, guessed }) =>
   addChat(`<span class="who">${esc(name)}:</span> ${esc(text)}`, guessed ? "system" : "")
 );
 socket.on("systemMessage", (text) => addChat(esc(text), "system"));
-socket.on("correctGuess", ({ name, points }) =>
-  addChat(`🎉 ${esc(name)} guessed the word! (+${points})`, "correct")
-);
+socket.on("correctGuess", ({ name, points }) => {
+  sfx.correct();
+  confetti(45);
+  addChat(`🎉 ${esc(name)} guessed the word! (+${points})`, "correct");
+});
 
 socket.on("turnEnd", ({ word, reason }) => {
+  sfx.roundEnd();
   $("resultTitle").textContent = `The word was: ${word}`;
   $("resultBody").textContent = reason;
   $("resultModal").classList.remove("hidden");
@@ -398,6 +495,7 @@ socket.on("turnEnd", ({ word, reason }) => {
 });
 
 socket.on("gameEnd", ({ ranking }) => {
+  sfx.fanfare();
   confetti();
   $("resultTitle").textContent = "🏆 Game Over!";
   const medals = ["🥇", "🥈", "🥉"];

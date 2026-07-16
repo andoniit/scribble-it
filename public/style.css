@@ -84,11 +84,16 @@ button { font-family: inherit; }
   font-size: 2.6rem;
   font-weight: 800;
   margin-bottom: 4px;
-  background: linear-gradient(100deg, #b7a6ff, #ff8ec3 60%, var(--gold));
+  background: linear-gradient(100deg, #b7a6ff, #ff8ec3 30%, var(--gold) 55%, #6ee7f9 80%, #b7a6ff);
+  background-size: 300% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 4px 18px rgba(124, 92, 255, 0.35));
+  animation: title-shimmer 6s linear infinite;
+}
+@keyframes title-shimmer {
+  to { background-position: 300% 0; }
 }
 
 .lobby-card h2 { font-weight: 800; font-size: 1.5rem; }
@@ -234,9 +239,70 @@ button { font-family: inherit; }
   overflow: hidden;
   text-overflow: ellipsis;
   text-shadow: 0 2px 14px rgba(124, 92, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
 }
 
-#timerDisplay { min-width: 84px; text-align: center; font-size: 1.05rem; }
+/* letter tiles for the word */
+.tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 38px;
+  border-radius: 8px;
+  background: linear-gradient(160deg, rgba(124, 92, 255, 0.45), rgba(255, 93, 162, 0.35));
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  text-shadow: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation: tile-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes tile-in {
+  from { transform: scale(0.6) rotate(-6deg); opacity: 0; }
+  to { transform: scale(1) rotate(0); opacity: 1; }
+}
+.tile.blank {
+  background: var(--panel-2);
+  border-bottom: 3px solid rgba(255, 255, 255, 0.35);
+}
+.tile.gap {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  width: 14px;
+}
+.draw-label {
+  font-size: 0.85rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  margin-right: 8px;
+}
+
+.top-right { display: flex; align-items: center; gap: 8px; }
+
+#timerDisplay {
+  min-width: 84px;
+  text-align: center;
+  font-size: 1.05rem;
+  background: linear-gradient(135deg, rgba(124, 92, 255, 0.35), rgba(255, 93, 162, 0.25));
+  border-color: rgba(124, 92, 255, 0.4);
+}
+
+.icon-chip {
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--text);
+  padding: 6px 12px;
+  transition: transform 0.12s, background 0.12s;
+}
+.icon-chip:hover { transform: scale(1.08); background: var(--panel-3); }
 #timerDisplay.low {
   color: white;
   background: linear-gradient(135deg, var(--danger), #e11d48);
@@ -436,9 +502,43 @@ aside h2 {
   transform: translate(-50%, -50%);
   transition: background 0.1s;
   box-shadow: 0 0 14px rgba(255, 93, 162, 0.7);
-  z-index: 10;
+  z-index: 20;
 }
-#handCursor.pinching { background: var(--accent-2); }
+#handCursor.pinching {
+  background: var(--accent-2);
+  box-shadow: 0 0 22px rgba(255, 93, 162, 1);
+}
+
+/* element the hand cursor is hovering — pinch to activate */
+.hand-hover {
+  outline: 3px solid var(--accent-2) !important;
+  outline-offset: 2px;
+  transform: scale(1.12);
+  transition: transform 0.1s;
+}
+
+.cam-btn {
+  position: absolute;
+  top: 46px;
+  left: 14px;
+  z-index: 6;
+  padding: 8px 14px;
+  border: 1px solid rgba(124, 92, 255, 0.55);
+  border-radius: 999px;
+  background: rgba(20, 17, 42, 0.85);
+  backdrop-filter: blur(8px);
+  color: var(--text);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  transition: background 0.12s, transform 0.12s, border-color 0.12s;
+}
+.cam-btn:hover { transform: translateY(-1px); border-color: var(--accent-2); }
+.cam-btn.on {
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+}
 
 /* ---------- toolbar ---------- */
 #toolbar {

@@ -45,7 +45,10 @@
     <header id="topBar">
       <div id="roundInfo" class="chip">Round – / –</div>
       <div id="wordDisplay">Waiting for players...</div>
-      <div id="timerDisplay" class="chip">⏱ –</div>
+      <div class="top-right">
+        <div id="timerDisplay" class="chip">⏱ –</div>
+        <button id="muteBtn" class="chip icon-chip" title="Toggle sound">🔊</button>
+      </div>
     </header>
 
     <main id="layout">
@@ -65,13 +68,13 @@
         <div id="handCursor" class="hidden"></div>
         <video id="camVideo" playsinline muted></video>
         <div id="camStatus">camera off</div>
+        <button id="camToggleBtn" class="cam-btn" title="Toggle hand tracking">📷 Air-draw</button>
 
         <div id="toolbar" class="hidden">
           <div id="colors"></div>
           <input id="brushSize" type="range" min="2" max="30" value="6" title="Brush size" />
           <button id="eraserBtn" class="tool-btn" title="Eraser">🧽</button>
           <button id="clearBtn" class="tool-btn" title="Clear canvas">🗑️</button>
-          <button id="camToggleBtn" class="tool-btn" title="Toggle hand tracking">📷</button>
         </div>
       </section>
 
