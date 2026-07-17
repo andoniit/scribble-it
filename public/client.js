@@ -1,4 +1,4 @@
-import { startHandTracking, stopHandTracking, isTracking } from "./hand-tracking.js";
+import { startHandTracking, stopHandTracking, isTracking, setPreferredHand } from "./hand-tracking.js";
 import { sfx } from "./sounds.js";
 
 const socket = io();
@@ -161,6 +161,25 @@ function hideGestureGuide() {
   gestureGuide.classList.remove("fading");
 }
 $("guideCloseBtn").addEventListener("click", hideGestureGuide);
+
+// ---------- hand preference (right/left — the other hand is ignored) ----------
+const handPrefBtn = $("handPrefBtn");
+let handPref = localStorage.getItem("scribble-hand") === "left" ? "left" : "right";
+
+function renderHandPref() {
+  handPrefBtn.textContent = handPref === "right" ? "🫱 Right hand" : "🫲 Left hand";
+  $("guideHandName").textContent = handPref;
+}
+setPreferredHand(handPref);
+renderHandPref();
+
+handPrefBtn.addEventListener("click", () => {
+  handPref = handPref === "right" ? "left" : "right";
+  localStorage.setItem("scribble-hand", handPref);
+  setPreferredHand(handPref);
+  renderHandPref();
+  if (isTracking()) camStatus.textContent = `tracking ${handPref} hand only`;
+});
 
 const camBtn = $("camToggleBtn");
 let camWantedOn = false; // the player's preference, remembered across auto-pauses

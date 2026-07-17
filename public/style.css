@@ -564,6 +564,8 @@ aside h2 {
   transition: background 0.12s, transform 0.12s, border-color 0.12s;
 }
 .cam-btn:hover { transform: translateY(-1px); border-color: var(--accent-2); }
+.cam-btn.hand-pref { top: 88px; font-size: 0.78rem; }
+
 .cam-btn:disabled,
 .cam-btn.disabled {
   opacity: 0.45;
@@ -608,6 +610,15 @@ aside h2 {
 }
 #gestureGuide .g-icon { font-size: 1.5rem; flex: none; }
 #gestureGuide small { color: var(--muted); }
+.guide-hand-note {
+  margin-top: 12px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.4;
+}
+.guide-hand-note strong { color: var(--gold); }
+
 #guideCloseBtn {
   width: 100%;
   margin-top: 14px;

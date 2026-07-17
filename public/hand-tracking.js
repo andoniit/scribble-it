@@ -30,6 +30,27 @@ let mode = "hover";
 let pendingMode = null;
 let pendingCount = 0;
 
+// which physical hand to track — the other one is ignored entirely.
+// NOTE: we feed raw (unmirrored) webcam frames, which flips MediaPipe's
+// handedness labels: the physical RIGHT hand is reported as "Left".
+let preferredHand = "right";
+const LABEL_FOR = { right: "Left", left: "Right" };
+
+export function setPreferredHand(hand) {
+  preferredHand = hand === "left" ? "left" : "right";
+}
+
+export function pickHandIndex(result) {
+  const wanted = LABEL_FOR[preferredHand];
+  const lists = result.handednesses || result.handedness || [];
+  for (let i = 0; i < (result.landmarks ? result.landmarks.length : 0); i++) {
+    const label = lists[i] && lists[i][0] ? lists[i][0].categoryName : null;
+    if (label === wanted) return i;
+    if (label === null && lists.length === 0) return i; // no handedness info — take what we have
+  }
+  return -1;
+}
+
 // adaptive exponential smoothing: heavy smoothing for slow/precise moves,
 // light smoothing for fast strokes so the line doesn't lag behind the hand
 const smooth = { x: null, y: null };
@@ -45,7 +66,7 @@ async function loadLandmarker() {
       delegate,
     },
     runningMode: "VIDEO",
-    numHands: 1,
+    numHands: 2, // see both hands so we can ignore the non-preferred one
     minHandDetectionConfidence: 0.6,
     minTrackingConfidence: 0.6,
   });
@@ -139,8 +160,9 @@ export async function startHandTracking(video, { onUpdate, onStatus }) {
       } catch {
         /* transient decode hiccup — skip this frame */
       }
-      if (result && result.landmarks && result.landmarks.length > 0) {
-        const lm = result.landmarks[0];
+      const handIdx = result ? pickHandIndex(result) : -1;
+      if (handIdx !== -1) {
+        const lm = result.landmarks[handIdx];
         const indexTip = lm[8];
 
         const rawX = 1 - indexTip.x; // mirror for selfie view
