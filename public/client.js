@@ -228,7 +228,15 @@ function syncCamWithTurn() {
 // ---------- drawing helpers ----------
 function drawSegment(seg, emit) {
   const w = canvas.width, h = canvas.height;
-  ctx.strokeStyle = seg.color;
+  ctx.save();
+  if (seg.erase) {
+    // real erasing: remove pixels instead of painting background color,
+    // so the camera mini-map (which overlays the bitmap) stays clean
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.strokeStyle = "rgba(0, 0, 0, 1)";
+  } else {
+    ctx.strokeStyle = seg.color;
+  }
   ctx.lineWidth = seg.size;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -236,6 +244,7 @@ function drawSegment(seg, emit) {
   ctx.moveTo(seg.x0 * w, seg.y0 * h);
   ctx.lineTo(seg.x1 * w, seg.y1 * h);
   ctx.stroke();
+  ctx.restore();
   if (emit) socket.emit("stroke", seg);
 }
 
@@ -243,10 +252,8 @@ function clearLocal() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-const CANVAS_BG = "#fffdf8"; // must match #drawCanvas background in style.css
-
 function penColor() {
-  return erasing ? CANVAS_BG : color;
+  return color;
 }
 
 function penSize() {
@@ -282,7 +289,7 @@ canvas.addEventListener("pointermove", (e) => {
   const p = evtPoint(e);
   if (last) {
     drawSegment(
-      { x0: last.x, y0: last.y, x1: p.x, y1: p.y, color: penColor(), size: penSize() },
+      { x0: last.x, y0: last.y, x1: p.x, y1: p.y, color: penColor(), size: penSize(), erase: erasing },
       canBroadcast()
     );
   }
@@ -421,7 +428,7 @@ function handleHand({ x, y, mode, detected }) {
       let seg;
       if (erasing) {
         const eraseSize = mode === "eraseBig" ? Math.max(brushSize * 7, 64) : Math.max(brushSize * 2.5, 24);
-        seg = { x0: handLast.x, y0: handLast.y, x1: p.x, y1: p.y, color: CANVAS_BG, size: eraseSize };
+        seg = { x0: handLast.x, y0: handLast.y, x1: p.x, y1: p.y, size: eraseSize, erase: true };
       } else {
         seg = { x0: handLast.x, y0: handLast.y, x1: p.x, y1: p.y, color: penColor(), size: penSize() };
       }
