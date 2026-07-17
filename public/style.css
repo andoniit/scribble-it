@@ -482,8 +482,8 @@ aside h2 {
 
 #camVideo {
   position: absolute;
-  top: 14px;
-  right: 14px;
+  top: 56px;
+  left: 14px;
   width: 190px;
   border-radius: 14px;
   transform: scaleX(-1);
@@ -498,8 +498,8 @@ aside h2 {
 /* mini-map overlay painted on top of the camera preview */
 #camOverlay {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: 58px;
+  left: 16px;
   width: 186px;
   border-radius: 12px;
   pointer-events: none;
@@ -691,9 +691,9 @@ aside h2 {
 
 /* ---------- toolbar ---------- */
 #toolbar {
-  /* docked ON the canvas, left side rail — minimal hand travel */
+  /* docked ON the canvas, right side rail — minimal hand travel */
   position: absolute;
-  left: 22px;
+  right: 22px;
   top: 50%;
   transform: translateY(-50%);
   display: flex;
@@ -938,6 +938,8 @@ aside h2 {
   #playersPanel { order: 3; }
   #canvasWrap { order: 1; min-height: 340px; }
   #chatPanel { order: 2; max-height: 240px; }
+  #camVideo { top: 14px; left: auto; right: 14px; }
+  #camOverlay { top: 16px; left: auto; right: 16px; }
   #toolbar {
     flex-direction: row;
     flex-wrap: wrap;
