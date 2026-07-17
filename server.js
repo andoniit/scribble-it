@@ -322,9 +322,8 @@ io.on("connection", (socket) => {
     beginDrawing(room, word);
   });
 
-  // in the lobby everyone can doodle to warm up; during a game only the drawer draws
-  const mayDraw = (room) =>
-    room.phase === "lobby" || (room.phase === "drawing" && socket.id === room.drawerId);
+  // only the current drawer's strokes are shared (lobby warm-up stays local)
+  const mayDraw = (room) => room.phase === "drawing" && socket.id === room.drawerId;
 
   socket.on("stroke", (seg) => {
     const room = joinedRoom;

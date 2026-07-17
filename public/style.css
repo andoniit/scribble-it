@@ -553,6 +553,13 @@ aside h2 {
   transition: background 0.12s, transform 0.12s, border-color 0.12s;
 }
 .cam-btn:hover { transform: translateY(-1px); border-color: var(--accent-2); }
+.cam-btn:disabled,
+.cam-btn.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  border-color: var(--stroke);
+}
 
 /* ---------- gesture guide (shown when air-draw turns on) ---------- */
 #gestureGuide {

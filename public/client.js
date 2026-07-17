@@ -136,7 +136,11 @@ $("eraserBtn").addEventListener("click", () => {
   erasing = !erasing;
   $("eraserBtn").classList.toggle("active", erasing);
 });
-$("clearBtn").addEventListener("click", () => socket.emit("clearCanvas"));
+$("clearBtn").addEventListener("click", () => {
+  // warm-up doodles are local, so clear locally; live turns clear for everyone
+  if (canBroadcast()) socket.emit("clearCanvas");
+  else clearLocal();
+});
 
 // gesture guide shown whenever air-draw turns on
 const gestureGuide = $("gestureGuide");
@@ -159,18 +163,19 @@ function hideGestureGuide() {
 $("guideCloseBtn").addEventListener("click", hideGestureGuide);
 
 const camBtn = $("camToggleBtn");
-camBtn.addEventListener("click", async () => {
-  if (isTracking()) {
-    stopHandTracking(camVideo);
-    camVideo.classList.remove("on");
-    camBtn.classList.remove("on");
-    camBtn.textContent = "📷 Air-draw";
-    handCursor.classList.add("hidden");
-    setHandHover(null);
-    hideGestureGuide();
-    camStatus.textContent = "camera off";
-    return;
-  }
+let camWantedOn = false; // the player's preference, remembered across auto-pauses
+
+function stopCam() {
+  stopHandTracking(camVideo);
+  camVideo.classList.remove("on");
+  camBtn.classList.remove("on");
+  camBtn.textContent = "📷 Air-draw";
+  handCursor.classList.add("hidden");
+  setHandHover(null);
+  hideGestureGuide();
+}
+
+async function startCam(withGuide) {
   try {
     camVideo.classList.add("on");
     camBtn.textContent = "⏳ starting...";
@@ -180,14 +185,43 @@ camBtn.addEventListener("click", async () => {
     });
     camBtn.classList.add("on");
     camBtn.textContent = "🛑 Stop air-draw";
-    showGestureGuide();
+    if (withGuide) showGestureGuide();
+    return true;
   } catch (err) {
     camVideo.classList.remove("on");
     camBtn.textContent = "📷 Air-draw";
     camStatus.textContent = "camera unavailable — use mouse";
     console.warn("hand tracking failed:", err);
+    return false;
+  }
+}
+
+camBtn.addEventListener("click", async () => {
+  if (isTracking()) {
+    camWantedOn = false;
+    stopCam();
+    camStatus.textContent = "camera off";
+  } else {
+    camWantedOn = await startCam(true);
   }
 });
+
+// hand detection is only for whoever is drawing: guessers get it paused
+// automatically while someone else draws, and back when it's their turn
+const camAllowed = () => isDrawer || phase === "lobby" || phase === "gameEnd";
+
+function syncCamWithTurn() {
+  const allowed = camAllowed();
+  camBtn.disabled = !allowed;
+  camBtn.classList.toggle("disabled", !allowed);
+  if (!allowed && isTracking()) {
+    stopCam();
+    camStatus.textContent = "✋ air-draw paused while others draw";
+  } else if (allowed && camWantedOn && !isTracking()) {
+    camStatus.textContent = "resuming air-draw...";
+    startCam(false);
+  }
+}
 
 // ---------- drawing helpers ----------
 function drawSegment(seg, emit) {
@@ -227,6 +261,8 @@ function evtPoint(e) {
 
 // lobby = free warm-up doodling for everyone; in-game only the drawer draws
 const canDrawNow = () => phase === "lobby" || (isDrawer && phase === "drawing");
+// warm-up doodles stay on your own screen — only real turns are broadcast
+const canBroadcast = () => isDrawer && phase === "drawing";
 
 // ---------- mouse / touch drawing ----------
 let mouseDown = false;
@@ -245,7 +281,7 @@ canvas.addEventListener("pointermove", (e) => {
   if (last) {
     drawSegment(
       { x0: last.x, y0: last.y, x1: p.x, y1: p.y, color: penColor(), size: penSize() },
-      true
+      canBroadcast()
     );
   }
   last = p;
@@ -332,7 +368,7 @@ function handleHand({ x, y, mode, detected }) {
       } else {
         seg = { x0: handLast.x, y0: handLast.y, x1: p.x, y1: p.y, color: penColor(), size: penSize() };
       }
-      drawSegment(seg, true);
+      drawSegment(seg, canBroadcast());
     }
     handLast = p;
     handLastMode = mode;
@@ -538,11 +574,12 @@ socket.on("roomState", (s) => {
     !(s.phase === "lobby" || s.phase === "gameEnd") || s.players.length < 2
   );
   toolbar.classList.toggle("hidden", !canDrawNow());
+  syncCamWithTurn();
 
   // contextual hint about the tools
   const hint = $("canvasHint");
   if (s.phase === "lobby") {
-    hint.textContent = "🖌 Warm-up! Everyone can doodle while waiting.";
+    hint.textContent = "🖌 Warm-up! Doodle freely — only you can see your canvas.";
     hint.classList.remove("hidden");
   } else if (s.phase === "drawing" && !isDrawer) {
     hint.textContent = "🔍 Guess the word! Drawing tools unlock on your turn.";
