@@ -31,10 +31,10 @@ let pendingMode = null;
 let pendingCount = 0;
 
 // which physical hand to track — the other one is ignored entirely.
-// NOTE: we feed raw (unmirrored) webcam frames, which flips MediaPipe's
-// handedness labels: the physical RIGHT hand is reported as "Left".
+// Confirmed on a real webcam: HandLandmarker's labels match the physical
+// hand directly here (no flip needed for our raw video frames).
 let preferredHand = "right";
-const LABEL_FOR = { right: "Left", left: "Right" };
+const LABEL_FOR = { right: "Right", left: "Left" };
 
 export function setPreferredHand(hand) {
   preferredHand = hand === "left" ? "left" : "right";
