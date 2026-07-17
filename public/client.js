@@ -168,6 +168,7 @@ let camWantedOn = false; // the player's preference, remembered across auto-paus
 function stopCam() {
   stopHandTracking(camVideo);
   camVideo.classList.remove("on");
+  $("camOverlay").classList.add("hidden");
   camBtn.classList.remove("on");
   camBtn.textContent = "📷 Air-draw";
   handCursor.classList.add("hidden");
@@ -185,6 +186,7 @@ async function startCam(withGuide) {
     });
     camBtn.classList.add("on");
     camBtn.textContent = "🛑 Stop air-draw";
+    $("camOverlay").classList.remove("hidden");
     if (withGuide) showGestureGuide();
     return true;
   } catch (err) {
@@ -305,7 +307,62 @@ function setHandHover(el) {
 
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 
+// ---------- camera mini-map ----------
+// Painted over the camera preview: the canvas region (with a live miniature
+// of the drawing) plus your fingertip, so you can see where you're aiming.
+const camOverlay = $("camOverlay");
+const octx = camOverlay.getContext("2d");
+const MODE_DOT = { draw: "#ff5da2", pinch: "#7c5cff", eraseSmall: "#a78bfa", eraseBig: "#a78bfa" };
+
+function renderCamOverlay(hand) {
+  if (camOverlay.classList.contains("hidden")) return;
+  // match the video's rendered size (minus its 2px border)
+  const vw = camVideo.clientWidth - 4;
+  const vh = camVideo.clientHeight - 4;
+  if (vw <= 0 || vh <= 0) return;
+  if (camOverlay.width !== vw || camOverlay.height !== vh) {
+    camOverlay.width = vw;
+    camOverlay.height = vh;
+    camOverlay.style.height = `${vh}px`;
+  }
+  octx.clearRect(0, 0, vw, vh);
+
+  // the draw canvas occupies a sub-rectangle of the hand's roaming area
+  const w = $("canvasWrap").getBoundingClientRect();
+  const r = canvas.getBoundingClientRect();
+  const mx = ((r.left - w.left) / w.width) * vw;
+  const my = ((r.top - w.top) / w.height) * vh;
+  const mw = (r.width / w.width) * vw;
+  const mh = (r.height / w.height) * vh;
+
+  octx.fillStyle = "rgba(255, 253, 248, 0.55)";
+  octx.fillRect(mx, my, mw, mh);
+  octx.drawImage(canvas, mx, my, mw, mh); // live miniature of the drawing
+  octx.setLineDash([5, 4]);
+  octx.lineWidth = 2;
+  octx.strokeStyle = "#7c5cff";
+  octx.strokeRect(mx, my, mw, mh);
+  octx.setLineDash([]);
+
+  if (hand && hand.detected) {
+    const px = hand.x * vw;
+    const py = hand.y * vh;
+    const erasing = hand.mode === "eraseSmall" || hand.mode === "eraseBig";
+    octx.beginPath();
+    octx.arc(px, py, erasing ? (hand.mode === "eraseBig" ? 9 : 6) : 4.5, 0, Math.PI * 2);
+    if (hand.mode === "hover" || erasing) {
+      octx.strokeStyle = MODE_DOT[hand.mode] || "rgba(255,255,255,0.95)";
+      octx.lineWidth = 2.5;
+      octx.stroke();
+    } else {
+      octx.fillStyle = MODE_DOT[hand.mode];
+      octx.fill();
+    }
+  }
+}
+
 function handleHand({ x, y, mode, detected }) {
+  renderCamOverlay({ x, y, mode, detected });
   if (!detected) {
     handCursor.classList.add("hidden");
     handLast = null;

@@ -477,6 +477,17 @@ aside h2 {
 }
 #camVideo.on { display: block; }
 
+/* mini-map overlay painted on top of the camera preview */
+#camOverlay {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 186px;
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 6;
+}
+
 #camStatus {
   position: absolute;
   top: 14px;
