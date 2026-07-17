@@ -7,21 +7,21 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✋</text></svg>" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <!-- ======== LOBBY ======== -->
   <div id="lobby" class="overlay">
     <div class="lobby-card">
-      <h1>✋ Scribble It</h1>
+      <h1>Scribble It</h1>
       <input id="nameInput" type="text" maxlength="16" placeholder="Your name" autocomplete="off" />
       <p id="roomNotice" class="room-notice hidden"></p>
 
       <div id="modeButtons">
-        <button id="createBtn" class="big-btn">🎨 Create a Room</button>
+        <button id="createBtn" class="big-btn">Create a Room</button>
         <div class="divider">or</div>
-        <button id="joinModeBtn" class="big-btn secondary">🔑 Join a Room</button>
+        <button id="joinModeBtn" class="big-btn secondary">Join a Room</button>
       </div>
 
       <div id="joinFields" class="hidden">
@@ -33,8 +33,8 @@
       <p class="quick-play"><a id="quickPlay" href="#">or quick-play in the public room</a></p>
       <p id="lobbyError" class="error"></p>
       <div class="how-to">
-        <strong>How air-drawing works:</strong>
-        <span>☝️ One finger draws &nbsp;·&nbsp; ✌️ two fingers move &nbsp;·&nbsp; 🤟 three fingers small eraser &nbsp;·&nbsp; 🖐 full palm big eraser &nbsp;·&nbsp; 🤏 pinch to pick colors &amp; tools. Mouse works too!</span>
+        <strong>How air-drawing works</strong>
+        <span>One finger draws &middot; two fingers move &middot; three fingers small eraser &middot; open palm large eraser &middot; pinch to select colors and tools. Mouse works too.</span>
       </div>
     </div>
   </div>
@@ -45,8 +45,8 @@
       <div id="roundInfo" class="chip">Round – / –</div>
       <div id="wordDisplay">Waiting for players...</div>
       <div class="top-right">
-        <div id="timerDisplay" class="chip">⏱ –</div>
-        <button id="muteBtn" class="chip icon-chip" title="Toggle sound">🔊</button>
+        <div id="timerDisplay" class="chip">–</div>
+        <button id="muteBtn" class="chip icon-chip" title="Toggle sound">Sound on</button>
       </div>
     </header>
 
@@ -56,7 +56,7 @@
         <ul id="playersList"></ul>
         <div id="inviteBox" class="hidden">
           <div id="roomCodeLabel"></div>
-          <button id="copyLinkBtn">🔗 Copy invite link</button>
+          <button id="copyLinkBtn">Copy invite link</button>
           <input id="inviteLink" type="text" readonly />
         </div>
         <button id="startBtn" class="big-btn hidden">Start Game</button>
@@ -71,30 +71,34 @@
         <div id="canvasHint" class="hidden"></div>
 
         <div id="gestureGuide" class="hidden">
-          <h3>🤚 Air-draw is on!</h3>
+          <h3>Air-draw is on</h3>
           <ul>
-            <li><span class="g-icon">☝️</span><div><strong>One finger</strong> — draw<br /><small>index up, middle folded</small></div></li>
-            <li><span class="g-icon">✌️</span><div><strong>Two fingers</strong> — move around<br /><small>reposition without drawing</small></div></li>
-            <li><span class="g-icon">🤟</span><div><strong>Three fingers</strong> — small eraser<br /><small>index + middle + ring</small></div></li>
-            <li><span class="g-icon">🖐</span><div><strong>Full palm</strong> — big eraser<br /><small>all fingers open wide</small></div></li>
-            <li><span class="g-icon">🤏</span><div><strong>Pinch</strong> — pick colors &amp; tools<br /><small>hover a button, pinch to click</small></div></li>
+            <li><span class="g-num">1</span><div><strong>One finger</strong> — draw<br /><small>index up, middle folded</small></div></li>
+            <li><span class="g-num">2</span><div><strong>Two fingers</strong> — move<br /><small>reposition without drawing</small></div></li>
+            <li><span class="g-num">3</span><div><strong>Three fingers</strong> — small eraser<br /><small>index + middle + ring</small></div></li>
+            <li><span class="g-num">5</span><div><strong>Open palm</strong> — large eraser<br /><small>all fingers extended</small></div></li>
+            <li><span class="g-num">P</span><div><strong>Pinch</strong> — select colors &amp; tools<br /><small>hover a control, pinch to click</small></div></li>
           </ul>
-          <p class="guide-hand-note">Tracking your <strong id="guideHandName">right</strong> hand — the other one is ignored. Switch with the 🫱/🫲 button.</p>
-          <button id="guideCloseBtn">Got it, let's draw! 🎨</button>
+          <p class="guide-hand-note">Tracking your <strong id="guideHandName">right</strong> hand — the other one is ignored. Switch with the hand button above.</p>
+          <button id="guideCloseBtn">Got it</button>
         </div>
-        <button id="camToggleBtn" class="cam-btn" title="Toggle hand tracking">📷 Air-draw</button>
-        <button id="handPrefBtn" class="cam-btn hand-pref" title="Which hand to track — the other is ignored">🫱 Right hand</button>
+        <button id="camToggleBtn" class="cam-btn" title="Toggle hand tracking">Air-draw</button>
+        <button id="handPrefBtn" class="cam-btn hand-pref" title="Which hand to track — the other is ignored">Right hand</button>
 
         <div id="toolbar" class="hidden">
           <div id="colors"></div>
           <input id="brushSize" type="range" min="2" max="30" value="6" title="Brush size" />
-          <button id="eraserBtn" class="tool-btn" title="Eraser">🧽</button>
-          <button id="clearBtn" class="tool-btn" title="Clear canvas">🗑️</button>
+          <button id="eraserBtn" class="tool-btn" title="Eraser" aria-label="Eraser">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20H8.5l-4.2-4.2a2 2 0 0 1 0-2.8L13.6 3.7a2 2 0 0 1 2.8 0l4.9 4.9a2 2 0 0 1 0 2.8L13 19.7" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+          </button>
+          <button id="clearBtn" class="tool-btn" title="Clear canvas" aria-label="Clear canvas">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+          </button>
         </div>
       </section>
 
       <aside id="chatPanel">
-        <h2>Guess!</h2>
+        <h2>Chat</h2>
         <ul id="chatList"></ul>
         <form id="chatForm">
           <input id="chatInput" type="text" maxlength="100" placeholder="Type your guess..." autocomplete="off" />
@@ -105,24 +109,24 @@
     <!-- game settings modal (opens when starting a game) -->
     <div id="settingsModal" class="overlay hidden">
       <div class="lobby-card settings-card">
-        <h2>⚙️ Game Settings</h2>
+        <h2>Game settings</h2>
         <div class="setting-row">
-          <label>⏱ Time per turn</label>
+          <label>Time per turn</label>
           <div class="seg" id="setTime"></div>
         </div>
         <div class="setting-row">
-          <label>🔁 Rounds</label>
+          <label>Rounds</label>
           <div class="seg" id="setRounds"></div>
         </div>
         <div class="setting-row">
-          <label>🎯 Word difficulty</label>
+          <label>Word difficulty</label>
           <div class="seg" id="setDiff"></div>
         </div>
         <div class="setting-row">
-          <label>🗂 Word categories</label>
+          <label>Word categories</label>
           <div id="setCats"></div>
         </div>
-        <button id="settingsStartBtn" class="big-btn">Start Game! 🚀</button>
+        <button id="settingsStartBtn" class="big-btn">Start game</button>
         <button id="settingsCancelBtn" class="link-btn">cancel</button>
       </div>
     </div>

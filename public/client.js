@@ -104,14 +104,14 @@ function setupInvite(roomId) {
   btn.onclick = async () => {
     try {
       await navigator.clipboard.writeText(link);
-      btn.textContent = "✅ Copied!";
+      btn.textContent = "Copied";
     } catch {
       // clipboard blocked (e.g. non-HTTPS) — select the visible link instead
       $("inviteLink").select();
       document.execCommand("copy");
-      btn.textContent = "✅ Copied!";
+      btn.textContent = "Copied";
     }
-    setTimeout(() => (btn.textContent = "🔗 Copy invite link"), 2000);
+    setTimeout(() => (btn.textContent = "Copy invite link"), 2000);
   };
 }
 
@@ -167,7 +167,7 @@ const handPrefBtn = $("handPrefBtn");
 let handPref = localStorage.getItem("scribble-hand") === "left" ? "left" : "right";
 
 function renderHandPref() {
-  handPrefBtn.textContent = handPref === "right" ? "🫱 Right hand" : "🫲 Left hand";
+  handPrefBtn.textContent = handPref === "right" ? "Right hand" : "Left hand";
   $("guideHandName").textContent = handPref;
 }
 setPreferredHand(handPref);
@@ -189,7 +189,7 @@ function stopCam() {
   camVideo.classList.remove("on");
   $("camOverlay").classList.add("hidden");
   camBtn.classList.remove("on");
-  camBtn.textContent = "📷 Air-draw";
+  camBtn.textContent = "Air-draw";
   handCursor.classList.add("hidden");
   setHandHover(null);
   hideGestureGuide();
@@ -198,19 +198,19 @@ function stopCam() {
 async function startCam(withGuide) {
   try {
     camVideo.classList.add("on");
-    camBtn.textContent = "⏳ starting...";
+    camBtn.textContent = "starting...";
     await startHandTracking(camVideo, {
       onStatus: (s) => (camStatus.textContent = s),
       onUpdate: handleHand,
     });
     camBtn.classList.add("on");
-    camBtn.textContent = "🛑 Stop air-draw";
+    camBtn.textContent = "Stop air-draw";
     $("camOverlay").classList.remove("hidden");
     if (withGuide) showGestureGuide();
     return true;
   } catch (err) {
     camVideo.classList.remove("on");
-    camBtn.textContent = "📷 Air-draw";
+    camBtn.textContent = "Air-draw";
     camStatus.textContent = "camera unavailable — use mouse";
     console.warn("hand tracking failed:", err);
     return false;
@@ -237,7 +237,7 @@ function syncCamWithTurn() {
   camBtn.classList.toggle("disabled", !allowed);
   if (!allowed && isTracking()) {
     stopCam();
-    camStatus.textContent = "✋ air-draw paused while others draw";
+    camStatus.textContent = "air-draw paused while others draw";
   } else if (allowed && camWantedOn && !isTracking()) {
     camStatus.textContent = "resuming air-draw...";
     startCam(false);
@@ -499,13 +499,13 @@ const esc = (s) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
 // consistent emoji avatar per player, derived from the name so every client agrees
-const AVATARS = ["🦊", "🐼", "🐸", "🦄", "🐙", "🐯", "🐝", "🐧", "🦁", "🐢", "🐰", "🦖", "🐨", "🐹", "🦉", "🐳"];
+
 function nameHash(name) {
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return h;
 }
-const avatarFor = (name) => AVATARS[nameHash(name) % AVATARS.length];
+const avatarFor = (name) => esc(name.trim().charAt(0).toUpperCase() || "?");
 const hueFor = (name) => nameHash(name) % 360;
 
 // word shown as letter tiles (blanks for hidden letters)
@@ -524,9 +524,9 @@ function setWordTiles(str, label = "") {
 
 // ---------- sounds ----------
 const muteBtn = $("muteBtn");
-muteBtn.textContent = sfx.isMuted() ? "🔇" : "🔊";
+muteBtn.textContent = sfx.isMuted() ? "Sound off" : "Sound on";
 muteBtn.addEventListener("click", () => {
-  muteBtn.textContent = sfx.toggleMute() ? "🔇" : "🔊";
+  muteBtn.textContent = sfx.toggleMute() ? "Sound off" : "Sound on";
 });
 // every button press (mouse OR hand-pinch) gives a soft click
 document.addEventListener("click", (e) => {
@@ -534,7 +534,7 @@ document.addEventListener("click", (e) => {
 });
 
 function confetti(count = 130) {
-  const colors = ["#7c5cff", "#ff5da2", "#ffc83d", "#4ade80", "#22d3ee", "#fb7185"];
+  const colors = ["#6366f1", "#818cf8", "#d4a843", "#34d399", "#38bdf8", "#f87171"];
   for (let i = 0; i < count; i++) {
     const c = document.createElement("div");
     c.className = "confetti";
@@ -550,12 +550,12 @@ function confetti(count = 130) {
 // ---------- socket events ----------
 // ---------- game settings ----------
 const CATEGORIES = [
-  { id: "classic", label: "🎨 Classic" },
-  { id: "food", label: "🍕 Food" },
-  { id: "animals", label: "🐾 Animals" },
-  { id: "sports", label: "⚽ Sports" },
-  { id: "engineering", label: "⚙️ Engineering" },
-  { id: "adult", label: "🔞 After Dark" },
+  { id: "classic", label: "Classic" },
+  { id: "food", label: "Food" },
+  { id: "animals", label: "Animals" },
+  { id: "sports", label: "Sports" },
+  { id: "engineering", label: "Engineering" },
+  { id: "adult", label: "After Dark (18+)" },
 ];
 const gameSettings = {
   drawTime: 80,
@@ -646,11 +646,11 @@ socket.on("roomState", (s) => {
   sorted.forEach((p) => {
     const li = document.createElement("li");
     li.className = (p.guessed ? "guessed " : "") + (p.drawing ? "drawing" : "");
-    const crown = p.score === topScore && topScore > 0 ? "👑 " : "";
+    const leader = p.score === topScore && topScore > 0 ? '<span class="leader-mark">&#10022;</span> ' : "";
     const h = hueFor(p.name);
     li.innerHTML =
-      `<span class="avatar" style="background: linear-gradient(145deg, hsl(${h} 80% 62% / 0.55), hsl(${(h + 60) % 360} 80% 62% / 0.4))">${avatarFor(p.name)}</span>` +
-      `<span class="player-name">${crown}${p.drawing ? "✏️ " : ""}${esc(p.name)}${p.id === selfId ? " <small>(you)</small>" : ""}</span>` +
+      `<span class="avatar" style="background: hsl(${h} 28% 34%)">${avatarFor(p.name)}</span>` +
+      `<span class="player-name">${leader}${esc(p.name)}${p.id === selfId ? " <small>(you)</small>" : ""}${p.drawing ? ' <small class="drawing-tag">drawing</small>' : ""}</span>` +
       `<span class="score">${p.score}</span>`;
     ul.appendChild(li);
   });
@@ -665,10 +665,10 @@ socket.on("roomState", (s) => {
   // contextual hint about the tools
   const hint = $("canvasHint");
   if (s.phase === "lobby") {
-    hint.textContent = "🖌 Warm-up! Doodle freely — only you can see your canvas.";
+    hint.textContent = "Warm-up — doodle freely; only you can see your canvas.";
     hint.classList.remove("hidden");
   } else if (s.phase === "drawing" && !isDrawer) {
-    hint.textContent = "🔍 Guess the word! Drawing tools unlock on your turn.";
+    hint.textContent = "Guess the word — drawing tools unlock on your turn.";
     hint.classList.remove("hidden");
   } else {
     hint.classList.add("hidden");
@@ -687,7 +687,7 @@ socket.on("tick", ({ timeLeft, masked }) => {
 });
 
 function updateTimer(t) {
-  $("timerDisplay").textContent = `⏱ ${t ?? "–"}`;
+  $("timerDisplay").textContent = `${t ?? "–"}s`;
   $("timerDisplay").classList.toggle("low", t !== null && t <= 10);
 }
 
@@ -722,7 +722,7 @@ socket.on("systemMessage", (text) => addChat(esc(text), "system"));
 socket.on("correctGuess", ({ name, points }) => {
   sfx.correct();
   confetti(45);
-  addChat(`🎉 ${esc(name)} guessed the word! (+${points})`, "correct");
+  addChat(`${esc(name)} guessed the word (+${points})`, "correct");
 });
 
 socket.on("turnEnd", ({ word, reason }) => {
@@ -736,12 +736,12 @@ socket.on("turnEnd", ({ word, reason }) => {
 socket.on("gameEnd", ({ ranking }) => {
   sfx.fanfare();
   confetti();
-  $("resultTitle").textContent = "🏆 Game Over!";
-  const medals = ["🥇", "🥈", "🥉"];
+  $("resultTitle").textContent = "Game over";
+  
   $("resultBody").innerHTML = ranking
     .map(
       (p, i) =>
-        `<div class="rank-row"><span>${medals[i] || `${i + 1}.`} ${esc(p.name)}</span><span>${p.score}</span></div>`
+        `<div class="rank-row"><span><span class="rank-num">${i + 1}</span> ${esc(p.name)}</span><span>${p.score}</span></div>`
     )
     .join("");
   $("resultModal").classList.remove("hidden");
