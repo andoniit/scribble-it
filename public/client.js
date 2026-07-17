@@ -416,12 +416,15 @@ function handleHand({ x, y, mode, detected }) {
   const cy = (py - r.top) / r.height;
   const overCanvas = cx >= 0 && cx <= 1 && cy >= 0 && cy <= 1;
 
-  // hover feedback + pinch-to-click for anything under the cursor
+  // hover feedback + pinch-to-click for anything under the cursor.
+  // The toolbar floats ON the canvas, so UI under the cursor always wins
+  // over drawing — hovering a tool never paints behind it.
   const under = document.elementFromPoint(px, py);
   const clickable = under ? under.closest("button, a, .color-swatch") : null;
-  setHandHover(overCanvas ? null : clickable);
+  const overUI = !!(clickable || (under && under.closest("#toolbar")));
+  setHandHover(clickable);
 
-  if (mode === "pinch" && modeWas !== "pinch" && !overCanvas) {
+  if (mode === "pinch" && modeWas !== "pinch" && overUI) {
     const now = Date.now();
     if (now - lastPinchClick > 450) {
       if (clickable) {
@@ -440,7 +443,7 @@ function handleHand({ x, y, mode, detected }) {
 
   const erasing = mode === "eraseSmall" || mode === "eraseBig";
   const acting = mode === "draw" || erasing;
-  if (acting && canDrawNow() && overCanvas) {
+  if (acting && canDrawNow() && overCanvas && !overUI) {
     const p = { x: clamp01(cx), y: clamp01(cy) };
     // don't connect a draw stroke to an erase stroke (or a small to a big one)
     if (handLast && handLastMode === mode) {

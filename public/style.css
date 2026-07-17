@@ -456,7 +456,7 @@ aside h2 {
   background: #fffdf8;
   border-radius: 14px;
   max-width: calc(100% - 24px);
-  max-height: calc(100% - 78px);
+  max-height: calc(100% - 24px);
   touch-action: none;
   cursor: crosshair;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.06);
@@ -637,7 +637,7 @@ aside h2 {
 
 #canvasHint {
   position: absolute;
-  bottom: 68px;
+  bottom: 112px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 5;
@@ -659,18 +659,19 @@ aside h2 {
 
 /* ---------- toolbar ---------- */
 #toolbar {
+  /* floats ON the canvas so the hand cursor barely has to travel */
   position: absolute;
-  bottom: 12px;
+  bottom: 26px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 12px;
-  background: rgba(20, 17, 42, 0.85);
+  gap: 14px;
+  background: rgba(20, 17, 42, 0.78);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--stroke);
-  padding: 10px 16px;
+  border: 1px solid rgba(124, 92, 255, 0.4);
+  padding: 12px 18px;
   border-radius: 999px;
   box-shadow: var(--shadow-sm);
   z-index: 6;
@@ -678,8 +679,8 @@ aside h2 {
 
 #colors { display: flex; gap: 7px; }
 .color-swatch {
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: 2px solid rgba(255, 255, 255, 0.18);
   cursor: pointer;
@@ -697,9 +698,9 @@ aside h2 {
 .tool-btn {
   background: var(--panel-2);
   border: 1px solid var(--stroke);
-  border-radius: 10px;
-  padding: 7px 11px;
-  font-size: 1.05rem;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 1.2rem;
   cursor: pointer;
   transition: background 0.12s, transform 0.12s;
 }
@@ -900,4 +901,14 @@ aside h2 {
   #playersPanel { order: 3; }
   #canvasWrap { order: 1; min-height: 340px; }
   #chatPanel { order: 2; max-height: 240px; }
+  #toolbar {
+    flex-wrap: wrap;
+    justify-content: center;
+    max-width: calc(100% - 16px);
+    border-radius: 20px;
+    gap: 10px;
+    padding: 10px 12px;
+  }
+  #colors { flex-wrap: wrap; justify-content: center; }
+  #canvasHint { bottom: auto; top: 14px; max-width: 58%; text-align: center; white-space: normal; line-height: 1.35; }
 }
