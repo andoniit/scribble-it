@@ -67,7 +67,6 @@
         <div id="handCursor" class="hidden"></div>
         <video id="camVideo" playsinline muted></video>
         <canvas id="camOverlay" class="hidden"></canvas>
-        <div id="camStatus">camera off</div>
         <div id="canvasHint" class="hidden"></div>
 
         <div id="gestureGuide" class="hidden">
@@ -82,8 +81,11 @@
           <p class="guide-hand-note">Tracking your <strong id="guideHandName">right</strong> hand — the other one is ignored. Switch with the hand button above.</p>
           <button id="guideCloseBtn">Got it</button>
         </div>
-        <button id="camToggleBtn" class="cam-btn" title="Toggle hand tracking">Air-draw</button>
-        <button id="handPrefBtn" class="cam-btn hand-pref" title="Which hand to track — the other is ignored">Right hand</button>
+        <div id="camControls">
+          <button id="camToggleBtn" class="cam-btn" title="Toggle hand tracking">Air-draw</button>
+          <button id="handPrefBtn" class="cam-btn hand-pref" title="Which hand to track — the other is ignored">Right hand</button>
+          <div id="camStatus">camera off</div>
+        </div>
 
         <div id="toolbar" class="hidden">
           <div id="colors"></div>

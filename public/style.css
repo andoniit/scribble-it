@@ -452,10 +452,21 @@ aside h2 {
   z-index: 6;
 }
 
-#camStatus {
+/* control row: flex so the buttons never collide when their text changes
+   (right offset reserves the top-right corner for the camera preview) */
+#camControls {
   position: absolute;
-  top: 18px;
-  left: 224px;
+  top: 14px;
+  left: 14px;
+  right: 216px;
+  z-index: 7;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+#camStatus {
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -463,7 +474,6 @@ aside h2 {
   border: 2.5px solid var(--ink);
   padding: 5px 10px;
   border-radius: 999px;
-  z-index: 5;
 }
 
 #handCursor {
@@ -491,10 +501,6 @@ aside h2 {
 
 /* camera controls */
 .cam-btn {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  z-index: 7;
   padding: 8px 13px;
   border: 2.5px solid var(--ink);
   border-radius: 999px;
@@ -508,7 +514,7 @@ aside h2 {
 }
 .cam-btn:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow); }
 .cam-btn.on { background: var(--coral); }
-.cam-btn.hand-pref { left: 120px; background: var(--sky); }
+.cam-btn.hand-pref { background: var(--sky); }
 .cam-btn:disabled, .cam-btn.disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -842,7 +848,10 @@ aside h2 {
     padding: 9px 10px;
   }
   #colors { display: flex; flex-wrap: wrap; justify-content: center; }
-  #camStatus { left: 14px; top: 52px; }
-  #canvasHint { bottom: auto; top: 88px; max-width: 76%; white-space: normal; text-align: center; }
+  /* smaller preview on phones frees room for the control row */
+  #camVideo { width: 120px; }
+  #camOverlay { width: 114px; }
+  #camControls { right: 144px; }
+  #canvasHint { bottom: auto; top: 96px; max-width: 76%; white-space: normal; text-align: center; }
   #wordDisplay { font-size: 1rem; }
 }

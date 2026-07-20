@@ -147,7 +147,7 @@ export async function startHandTracking(video, { onUpdate, onStatus }) {
   running = true;
   pinched = false;
   mode = "hover";
-  onStatus?.("hand tracking on 🤚");
+  onStatus?.("hand tracking on");
 
   let lastVideoTime = -1;
   const loop = () => {
