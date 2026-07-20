@@ -506,7 +506,9 @@ function nameHash(name) {
   return h;
 }
 const avatarFor = (name) => esc(name.trim().charAt(0).toUpperCase() || "?");
-const hueFor = (name) => nameHash(name) % 360;
+// flat neo-brutalist avatar colours, picked deterministically from the name
+const AVATAR_COLORS = ["#ffd84d", "#ff6b9d", "#4ecdc4", "#ff7a5c", "#b79cff", "#6ba6ff", "#7be495"];
+const avatarColor = (name) => AVATAR_COLORS[nameHash(name) % AVATAR_COLORS.length];
 
 // word shown as letter tiles (blanks for hidden letters)
 function setWordTiles(str, label = "") {
@@ -534,7 +536,7 @@ document.addEventListener("click", (e) => {
 });
 
 function confetti(count = 130) {
-  const colors = ["#6366f1", "#818cf8", "#d4a843", "#34d399", "#38bdf8", "#f87171"];
+  const colors = ["#ffd84d", "#ff6b9d", "#4ecdc4", "#ff7a5c", "#b79cff", "#7be495"];
   for (let i = 0; i < count; i++) {
     const c = document.createElement("div");
     c.className = "confetti";
@@ -647,9 +649,9 @@ socket.on("roomState", (s) => {
     const li = document.createElement("li");
     li.className = (p.guessed ? "guessed " : "") + (p.drawing ? "drawing" : "");
     const leader = p.score === topScore && topScore > 0 ? '<span class="leader-mark">&#10022;</span> ' : "";
-    const h = hueFor(p.name);
+    const av = avatarColor(p.name);
     li.innerHTML =
-      `<span class="avatar" style="background: hsl(${h} 28% 34%)">${avatarFor(p.name)}</span>` +
+      `<span class="avatar" style="background: ${av}">${avatarFor(p.name)}</span>` +
       `<span class="player-name">${leader}${esc(p.name)}${p.id === selfId ? " <small>(you)</small>" : ""}${p.drawing ? ' <small class="drawing-tag">drawing</small>' : ""}</span>` +
       `<span class="score">${p.score}</span>`;
     ul.appendChild(li);
@@ -687,7 +689,7 @@ socket.on("tick", ({ timeLeft, masked }) => {
 });
 
 function updateTimer(t) {
-  $("timerDisplay").textContent = `${t ?? "–"}s`;
+  $("timerDisplay").textContent = t ? `${t}s` : "—";
   $("timerDisplay").classList.toggle("low", t !== null && t <= 10);
 }
 
