@@ -222,6 +222,118 @@ button, input { font-family: inherit; }
   font-size: 0.8rem;
 }
 
+/* ---------- site footer ---------- */
+.site-footer {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: calc(100% - 24px);
+  padding: 7px 14px;
+  background: #fff;
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  box-shadow: var(--shadow-sm);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.site-footer a { color: var(--ink); text-decoration: underline; }
+.site-footer a:hover { text-decoration-thickness: 2px; }
+.site-footer span { color: var(--muted); }
+
+/* ---------- document pages (privacy / game policy) ---------- */
+.doc-body { overflow: auto; }
+
+.doc-page {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 28px 20px 90px;
+  position: relative;
+  min-height: 100vh;
+}
+
+.doc-home {
+  display: inline-block;
+  margin-bottom: 18px;
+  padding: 8px 14px;
+  background: var(--yellow);
+  border: 2.5px solid var(--ink);
+  border-radius: 999px;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  text-decoration: none;
+  box-shadow: var(--shadow-sm);
+}
+.doc-home:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow); }
+
+.doc-card {
+  background: var(--panel);
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  padding: 34px 32px;
+  box-shadow: var(--shadow-lg);
+}
+
+.doc-card h1 {
+  display: inline-block;
+  font-size: 1.7rem;
+  text-transform: uppercase;
+  letter-spacing: -0.5px;
+  background: var(--pink);
+  border: var(--border) solid var(--ink);
+  border-radius: 12px;
+  padding: 10px 18px;
+  box-shadow: var(--shadow);
+  transform: rotate(-1deg);
+}
+
+.doc-updated {
+  margin: 18px 0 22px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.doc-card h2 {
+  font-size: 1.02rem;
+  text-transform: uppercase;
+  letter-spacing: -0.2px;
+  margin: 28px 0 10px;
+  padding-left: 12px;
+  border-left: 6px solid var(--mint);
+}
+
+.doc-card p { margin-bottom: 12px; line-height: 1.62; font-weight: 500; }
+.doc-card ul { margin: 0 0 12px 20px; }
+.doc-card li { margin-bottom: 7px; line-height: 1.55; font-weight: 500; }
+.doc-card a { color: var(--ink); text-decoration: underline wavy var(--pink); font-weight: 700; }
+.doc-card code {
+  background: var(--paper);
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  padding: 1px 5px;
+  font-size: 0.85em;
+}
+
+.doc-footer { position: static; transform: none; margin: 26px auto 0; }
+
+@media (max-width: 640px) {
+  .doc-page { padding: 20px 14px 70px; }
+  .doc-card { padding: 24px 18px; }
+  .doc-card h1 { font-size: 1.35rem; }
+}
+
 /* ---------- game shell ---------- */
 /* contained shell so the dotted paper background frames the app */
 #game {
@@ -890,6 +1002,15 @@ aside h2 {
 /* ---------- responsive ---------- */
 @media (max-width: 900px) {
   body { overflow: auto; }
+  /* the card scrolls on small screens, so let the footer flow under it
+     instead of floating over the content */
+  #lobby { flex-direction: column; }
+  .site-footer {
+    position: static;
+    transform: none;
+    margin-top: 16px;
+    max-width: 100%;
+  }
   #game { padding: 10px; gap: 10px; height: auto; min-height: 100vh; }
   #layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; }
   #playersPanel { order: 3; }
