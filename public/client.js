@@ -1,6 +1,7 @@
 import { startHandTracking, stopHandTracking, isTracking, setPreferredHand } from "./hand-tracking.js";
 import { sfx } from "./sounds.js";
 import { renderDoodles } from "./doodles.js";
+import { createDwell } from "./dwell.js";
 
 const socket = io();
 
@@ -140,6 +141,7 @@ COLORS.forEach((c, i) => {
     $("eraserBtn").classList.remove("active");
     colorsDiv.querySelectorAll(".color-swatch").forEach((s) => s.classList.remove("active"));
     b.classList.add("active");
+    sfx.click();
   });
   colorsDiv.appendChild(b);
 });
@@ -223,6 +225,7 @@ function stopCam() {
   camBtn.textContent = "Air-draw";
   handCursor.classList.add("hidden");
   setHandHover(null);
+  cancelDwell();
   hideGestureGuide();
 }
 
@@ -362,6 +365,19 @@ function setHandHover(el) {
   hoverEl?.classList.add("hand-hover");
 }
 
+// ---------- dwell-to-select ----------
+const dwell = createDwell({
+  // camera controls are excluded: dwelling there could switch tracking off
+  // mid-draw, stranding the player
+  isEligible: (el) => !el.closest("#camControls"),
+  onProgress: (p) => {
+    handCursor.style.setProperty("--dwell", p.toFixed(3));
+    handCursor.classList.toggle("dwelling", p > 0);
+  },
+});
+const updateDwell = dwell.update;
+const cancelDwell = dwell.cancel;
+
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 
 // ---------- camera mini-map ----------
@@ -426,6 +442,7 @@ function handleHand({ x, y, mode, detected }) {
     handLastMode = null;
     modeWas = "hover";
     setHandHover(null);
+    cancelDwell();
     return;
   }
 
@@ -447,7 +464,7 @@ function handleHand({ x, y, mode, detected }) {
   const cy = (py - r.top) / r.height;
   const overCanvas = cx >= 0 && cx <= 1 && cy >= 0 && cy <= 1;
 
-  // hover feedback + pinch-to-click for anything under the cursor.
+  // hover feedback for anything under the cursor.
   // The toolbar floats ON the canvas, so UI under the cursor always wins
   // over drawing — hovering a tool never paints behind it.
   const under = document.elementFromPoint(px, py);
@@ -455,11 +472,17 @@ function handleHand({ x, y, mode, detected }) {
   const overUI = !!(clickable || (under && under.closest("#toolbar")));
   setHandHover(clickable);
 
+  // primary selection: dwell. Hold the cursor on a control and it activates,
+  // so nothing about your hand shape has to change at the moment you commit.
+  updateDwell(clickable, px, py);
+
+  // pinch still works as an instant shortcut for anyone who prefers it
   if (mode === "pinch" && modeWas !== "pinch" && overUI) {
     const now = Date.now();
     if (now - lastPinchClick > 450) {
       if (clickable) {
         lastPinchClick = now;
+        cancelDwell();
         clickable.click();
       }
     }

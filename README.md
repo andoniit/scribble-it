@@ -12,7 +12,7 @@ A skribbl.io-style multiplayer drawing & guessing game — except you draw **in 
   - ✌️ **Two fingers** (index + middle) to move the cursor without drawing
   - 🤟 **Three fingers** (index + middle + ring) for a small eraser
   - 🖐 **Full palm** (all fingers open) for a big eraser
-  - 🤏 **Pinch** thumb + index over a color, tool, or the brush slider to select it
+  - ⏱ **Hold still** over a color or tool for ~0.7s to select it — a ring fills around the cursor to show progress (pinching also works as a shortcut)
 - **Mouse/touch fallback** — regular drawing always works too.
 
 ## Run it
