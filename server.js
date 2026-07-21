@@ -78,6 +78,7 @@ function createRoom(roomId) {
     strokes: [], // replay buffer for late joiners
     settings: { ...DEFAULT_SETTINGS },
     hostId: null, // room creator; only the host may start a game
+    usedWords: new Set(), // words already offered, so they don't repeat
   };
   rooms.set(roomId, room);
   return room;
@@ -123,13 +124,22 @@ function clearTimer(room) {
   }
 }
 
+// Words already offered in this room are never offered again until the whole
+// pool has been used, then the cycle restarts.
 function pickWords(room, n) {
   const pool = [...new Set(wordPool(room.settings))];
-  for (let i = pool.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [pool[i], pool[j]] = [pool[j], pool[i]];
+  let available = pool.filter((w) => !room.usedWords.has(w));
+  if (available.length < n) {
+    room.usedWords.clear();
+    available = pool;
   }
-  return pool.slice(0, Math.min(n, pool.length));
+  for (let i = available.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [available[i], available[j]] = [available[j], available[i]];
+  }
+  const picked = available.slice(0, Math.min(n, available.length));
+  picked.forEach((w) => room.usedWords.add(w));
+  return picked;
 }
 
 const CATEGORY_LABELS = {
@@ -446,6 +456,11 @@ function levenshtein(a, b) {
   return dp[a.length][b.length];
 }
 
-server.listen(PORT, () => {
-  console.log(`Scribble It running at http://localhost:${PORT}`);
-});
+// only listen when run directly, so tests can import the helpers
+if (require.main === module) {
+  server.listen(PORT, () => {
+    console.log(`Scribble It running at http://localhost:${PORT}`);
+  });
+}
+
+module.exports = { pickWords, wordPool, sanitizeSettings, DEFAULT_SETTINGS };
