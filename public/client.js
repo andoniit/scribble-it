@@ -18,6 +18,7 @@ const chatList = $("chatList");
 // ---------- state ----------
 let selfId = null;
 let isDrawer = false;
+let isHost = false;
 let phase = "lobby";
 let color = "#1a1c2c";
 let brushSize = 8; // must match one of BRUSH_SIZES so a button starts active
@@ -663,15 +664,26 @@ socket.on("roomState", (s) => {
     const av = avatarColor(p.name);
     li.innerHTML =
       `<span class="avatar" style="background: ${av}">${avatarFor(p.name)}</span>` +
-      `<span class="player-name">${leader}${esc(p.name)}${p.id === selfId ? " <small>(you)</small>" : ""}${p.drawing ? ' <small class="drawing-tag">drawing</small>' : ""}</span>` +
+      `<span class="player-name">${leader}${esc(p.name)}${p.id === selfId ? " <small>(you)</small>" : ""}` +
+      `${p.host ? ' <small class="host-tag">host</small>' : ""}` +
+      `${p.drawing ? ' <small class="drawing-tag">drawing</small>' : ""}</span>` +
       `<span class="score">${p.score}</span>`;
     ul.appendChild(li);
   });
 
-  $("startBtn").classList.toggle(
-    "hidden",
-    !(s.phase === "lobby" || s.phase === "gameEnd") || s.players.length < 2
-  );
+  // only the host starts games; everyone else is told who to wait for
+  isHost = s.hostId === selfId;
+  const canStartPhase = s.phase === "lobby" || s.phase === "gameEnd";
+  $("startBtn").classList.toggle("hidden", !canStartPhase || !isHost || s.players.length < 2);
+
+  const waitMsg = $("waitingForHost");
+  const host = s.players.find((p) => p.id === s.hostId);
+  if (canStartPhase && !isHost && s.players.length >= 2 && host) {
+    waitMsg.textContent = `Waiting for ${host.name} to start the game`;
+    waitMsg.classList.remove("hidden");
+  } else {
+    waitMsg.classList.add("hidden");
+  }
   toolbar.classList.toggle("hidden", !canDrawNow());
   syncCamWithTurn();
 

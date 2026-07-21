@@ -365,6 +365,28 @@ aside h2 {
 }
 .player-name small { color: var(--muted); font-weight: 600; }
 .leader-mark { color: var(--ink); }
+.host-tag {
+  background: var(--sky);
+  border: 2px solid var(--ink);
+  border-radius: 5px;
+  padding: 0 4px;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 700;
+}
+
+.waiting-host {
+  background: var(--lavender);
+  border: 2.5px solid var(--ink);
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: var(--shadow-sm);
+}
+
 .drawing-tag {
   background: var(--ink);
   color: var(--yellow);

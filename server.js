@@ -77,6 +77,7 @@ function createRoom(roomId) {
     drawnThisRound: new Set(), // player ids who already drew this round
     strokes: [], // replay buffer for late joiners
     settings: { ...DEFAULT_SETTINGS },
+    hostId: null, // room creator; only the host may start a game
   };
   rooms.set(roomId, room);
   return room;
@@ -89,6 +90,7 @@ function publicPlayers(room) {
     score: p.score,
     guessed: p.guessedAt !== null,
     drawing: p.id === room.drawerId,
+    host: p.id === room.hostId,
   }));
 }
 
@@ -107,6 +109,7 @@ function broadcastState(room) {
     maxRounds: room.settings.rounds,
     players: publicPlayers(room),
     drawerId: room.drawerId,
+    hostId: room.hostId,
     timeLeft: room.timeLeft,
     masked: room.phase === "drawing" ? maskedWord(room) : "",
     settings: room.settings,
@@ -294,6 +297,8 @@ io.on("connection", (socket) => {
     joinedRoom = room;
     socket.join(room.id);
     room.players.push({ id: socket.id, name, score: 0, guessedAt: null });
+    // whoever opens the room is its host
+    if (!room.hostId) room.hostId = socket.id;
 
     if (ack) ack({ ok: true, roomId: room.id, selfId: socket.id });
     io.to(room.id).emit("systemMessage", `${name} joined the game.`);
@@ -308,6 +313,10 @@ io.on("connection", (socket) => {
   socket.on("startGame", (settings) => {
     const room = joinedRoom;
     if (!room || room.phase !== "lobby" && room.phase !== "gameEnd") return;
+    if (socket.id !== room.hostId) {
+      socket.emit("systemMessage", "Only the room host can start the game.");
+      return;
+    }
     if (room.players.length < MIN_PLAYERS) {
       socket.emit("systemMessage", `Need at least ${MIN_PLAYERS} players to start.`);
       return;
@@ -404,6 +413,12 @@ io.on("connection", (socket) => {
       clearTimer(room);
       rooms.delete(room.id);
       return;
+    }
+
+    // host left — the longest-standing remaining player inherits the room
+    if (socket.id === room.hostId) {
+      room.hostId = room.players[0].id;
+      io.to(room.id).emit("systemMessage", `${room.players[0].name} is now the host.`);
     }
 
     if (socket.id === room.drawerId && (room.phase === "drawing" || room.phase === "choosing")) {
