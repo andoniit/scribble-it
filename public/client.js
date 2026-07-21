@@ -479,7 +479,7 @@ window.addEventListener("scroll", invalidateRects, true);
 // full tracking rate, and both are comparatively expensive
 let lastHitTest = { at: 0, x: 0, y: 0, el: null };
 let lastOverlayAt = 0;
-const OVERLAY_MS = 66; // ~15fps is plenty for a thumbnail
+const OVERLAY_MS = 40; // ~25fps — smooth thumbnail, still cheap
 
 function handleHand({ x, y, mode, detected }) {
   const now = performance.now();

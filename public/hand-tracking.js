@@ -24,15 +24,17 @@ const PINCH_OFF = 0.55;
 const CURL_EXTENDED = 0.9;
 const CURL_FOLDED = 1.35;
 
-// Mode voting: a new mode needs a clear majority of the recent window before
-// it takes over, which is far steadier than a fixed 2-frame debounce.
-const VOTE_WINDOW = 5;
-const VOTE_MAJORITY = 3;
+// Mode voting: a new mode needs a majority of the recent window before it
+// takes over. Kept short so gestures switch fast — the per-finger hysteresis
+// already removes most of the noise.
+const VOTE_WINDOW = 3;
+const VOTE_MAJORITY = 2;
 
-// Inference cap. The model does not get more accurate above this, and the
-// saving is significant on laptops.
-const TARGET_FPS = 30;
-const MIN_FRAME_MS = 1000 / TARGET_FPS;
+// Safety cap for the rAF fallback only, so we don't run inference at 120Hz on
+// a high-refresh display. The requestVideoFrameCallback path needs no cap: it
+// already fires exactly once per camera frame.
+const MAX_FPS = 60;
+const RAF_MIN_FRAME_MS = 1000 / MAX_FPS;
 
 // Keep reporting the hand for a moment through a brief detection dropout,
 // so a single missed frame doesn't break the stroke you're drawing.
@@ -87,7 +89,10 @@ export function pickHandIndex(result) {
 
 // ---------- One Euro filter: low jitter when still, low lag when moving ----------
 class OneEuro {
-  constructor(minCutoff = 1.1, beta = 0.03, dCutoff = 1.0) {
+  // minCutoff sets how much the cursor is smoothed while nearly still, beta
+  // how quickly smoothing gives way as you move. Tuned to stay snappy: at
+  // rest this tracks ~35% of each new sample, and approaches 1:1 when moving.
+  constructor(minCutoff = 2.6, beta = 0.13, dCutoff = 1.2) {
     this.minCutoff = minCutoff;
     this.beta = beta;
     this.dCutoff = dCutoff;
@@ -239,7 +244,7 @@ export async function startHandTracking(video, { onUpdate, onStatus }) {
     video: {
       width: { ideal: 640 },
       height: { ideal: 480 },
-      frameRate: { ideal: TARGET_FPS, max: TARGET_FPS },
+      frameRate: { ideal: MAX_FPS },
       facingMode: "user",
     },
     audio: false,
@@ -255,11 +260,12 @@ export async function startHandTracking(video, { onUpdate, onStatus }) {
   let lastInferAt = 0;
   let lastVideoTime = -1;
 
-  const process = (now) => {
+  // `capped` is only true on the rAF fallback. Gating the frame-synced path on
+  // elapsed time would drop frames that arrive a hair early and halve the
+  // effective rate, which feels like lag.
+  const process = (now, capped) => {
     if (!running) return;
-
-    // cap inference rate — the extra frames cost CPU without helping accuracy
-    if (now - lastInferAt < MIN_FRAME_MS) return;
+    if (capped && now - lastInferAt < RAF_MIN_FRAME_MS) return;
     if (video.currentTime === lastVideoTime) return;
     lastVideoTime = video.currentTime;
 
@@ -313,16 +319,16 @@ export async function startHandTracking(video, { onUpdate, onStatus }) {
   // requestVideoFrameCallback fires exactly once per decoded frame — no
   // polling, no wasted wake-ups. rAF is the fallback.
   if (typeof video.requestVideoFrameCallback === "function") {
-    const onFrame = (now) => {
+    const onFrame = () => {
       if (!running) return;
-      process(performance.now());
+      process(performance.now(), false);
       videoCbId = video.requestVideoFrameCallback(onFrame);
     };
     videoCbId = video.requestVideoFrameCallback(onFrame);
   } else {
     const loop = () => {
       if (!running) return;
-      process(performance.now());
+      process(performance.now(), true);
       rafId = requestAnimationFrame(loop);
     };
     rafId = requestAnimationFrame(loop);
