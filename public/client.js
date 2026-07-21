@@ -20,7 +20,7 @@ let selfId = null;
 let isDrawer = false;
 let phase = "lobby";
 let color = "#1a1c2c";
-let brushSize = 6;
+let brushSize = 8; // must match one of BRUSH_SIZES so a button starts active
 let erasing = false;
 let last = null; // last draw point {x, y} normalized
 
@@ -131,7 +131,25 @@ COLORS.forEach((c, i) => {
   colorsDiv.appendChild(b);
 });
 
-$("brushSize").addEventListener("input", (e) => (brushSize = +e.target.value));
+// four discrete brush sizes — far easier to pinch-select in mid-air than a slider
+const BRUSH_SIZES = [4, 8, 16, 26];
+const brushSizesDiv = $("brushSizes");
+BRUSH_SIZES.forEach((size) => {
+  const b = document.createElement("button");
+  b.type = "button";
+  b.className = "brush-btn" + (size === brushSize ? " active" : "");
+  b.title = `Brush size ${size}`;
+  // preview dot is capped so the largest brush still fits inside the button
+  const dot = Math.min(size, 18);
+  b.innerHTML = `<span class="brush-dot" style="width:${dot}px;height:${dot}px"></span>`;
+  b.addEventListener("click", () => {
+    brushSize = size;
+    brushSizesDiv.querySelectorAll(".brush-btn").forEach((x) => x.classList.remove("active"));
+    b.classList.add("active");
+    sfx.click();
+  });
+  brushSizesDiv.appendChild(b);
+});
 $("eraserBtn").addEventListener("click", () => {
   erasing = !erasing;
   $("eraserBtn").classList.toggle("active", erasing);
@@ -430,13 +448,6 @@ function handleHand({ x, y, mode, detected }) {
       if (clickable) {
         lastPinchClick = now;
         clickable.click();
-      } else if (under && under.id === "brushSize") {
-        // pinch on the slider sets brush size from horizontal position
-        lastPinchClick = now;
-        const sr = under.getBoundingClientRect();
-        const frac = clamp01((px - sr.left) / sr.width);
-        under.value = Math.round(2 + frac * 28);
-        under.dispatchEvent(new Event("input", { bubbles: true }));
       }
     }
   }
