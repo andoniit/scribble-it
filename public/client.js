@@ -1,5 +1,6 @@
 import { startHandTracking, stopHandTracking, isTracking, setPreferredHand } from "./hand-tracking.js";
 import { sfx } from "./sounds.js";
+import { renderDoodles } from "./doodles.js";
 
 const socket = io();
 
@@ -29,6 +30,17 @@ const COLORS = [
   "#1a1c2c", "#ef4444", "#f97316", "#facc15", "#4ade80",
   "#22d3ee", "#5d5fef", "#ef5da8", "#a16207", "#ffffff",
 ];
+
+// ---------- lobby background doodles ----------
+const drawLobbyDoodles = () => {
+  if (!lobby.classList.contains("hidden")) renderDoodles(lobby, lobby.querySelector(".lobby-card"));
+};
+drawLobbyDoodles();
+let doodleTimer = null;
+window.addEventListener("resize", () => {
+  clearTimeout(doodleTimer);
+  doodleTimer = setTimeout(drawLobbyDoodles, 250);
+});
 
 // ---------- join flow ----------
 function showJoinFields(show) {
