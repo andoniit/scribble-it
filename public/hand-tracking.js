@@ -1,38 +1,67 @@
 // Hand tracking via MediaPipe HandLandmarker (tasks-vision).
-// Exposes startHandTracking(video, callbacks) / stopHandTracking().
 //
 // callbacks.onUpdate({ x, y, mode, detected }) — x/y normalized 0..1 in
 // mirrored (selfie) space. mode is one of:
 //   "draw"       — one finger pointing (index up, middle folded)
 //   "eraseSmall" — three fingers (index + middle + ring)
-//   "eraseBig"   — full palm (all four fingers extended)
-//   "pinch"      — thumb + index pinched, used to click UI elements
+//   "eraseBig"   — open palm (all four fingers extended)
+//   "pinch"      — thumb + index pinched (shortcut for clicking controls)
 //   "hover"      — two fingers, fist, or anything else: move only
+//
+// Recognition works on 3D *world* landmarks and per-finger joint angles, so
+// it holds up when the hand is rotated, tilted, or further from the camera —
+// none of which a 2D fingertip-distance test survives.
 
 const VISION_URL = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 
-// Pinch hysteresis (ratio of thumb-index distance to hand size): the pinch
-// turns ON only below PINCH_ON and OFF only above PINCH_OFF, so a hand
-// hovering right at one threshold can't flicker.
+// Pinch hysteresis (thumb-index distance / hand size): ON below, OFF above,
+// so a hand resting near the threshold can't flicker.
 const PINCH_ON = 0.38;
 const PINCH_OFF = 0.55;
 
-// a gesture must hold for this many consecutive frames before the mode
-// switches — kills flicker at gesture boundaries (~2 frames ≈ 70ms)
-const MODE_STABLE_FRAMES = 2;
+// Per-finger curl hysteresis, in radians summed over the two finger joints.
+// A straight finger is ~0; a folded one approaches Pi.
+const CURL_EXTENDED = 0.9;
+const CURL_FOLDED = 1.35;
+
+// Mode voting: a new mode needs a clear majority of the recent window before
+// it takes over, which is far steadier than a fixed 2-frame debounce.
+const VOTE_WINDOW = 5;
+const VOTE_MAJORITY = 3;
+
+// Inference cap. The model does not get more accurate above this, and the
+// saving is significant on laptops.
+const TARGET_FPS = 30;
+const MIN_FRAME_MS = 1000 / TARGET_FPS;
+
+// Keep reporting the hand for a moment through a brief detection dropout,
+// so a single missed frame doesn't break the stroke you're drawing.
+const DROPOUT_GRACE_MS = 110;
+
+const FINGERS = {
+  thumb: [1, 2, 3, 4],
+  index: [5, 6, 7, 8],
+  middle: [9, 10, 11, 12],
+  ring: [13, 14, 15, 16],
+  pinky: [17, 18, 19, 20],
+};
 
 let landmarker = null;
 let running = false;
 let rafId = null;
+let videoCbId = null;
+let videoEl = null;
 let stream = null;
+
 let pinched = false;
 let mode = "hover";
-let pendingMode = null;
-let pendingCount = 0;
+let voteBuf = [];
+let extended = { index: false, middle: false, ring: false, pinky: false, thumb: false };
+let lastSeenAt = 0;
+let lastGood = null;
+let fps = 0;
 
-// which physical hand to track — the other one is ignored entirely.
-// Confirmed on a real webcam: HandLandmarker's labels match the physical
-// hand directly here (no flip needed for our raw video frames).
+// which physical hand to track — the other one is ignored entirely
 let preferredHand = "right";
 const LABEL_FOR = { right: "Right", left: "Left" };
 
@@ -40,20 +69,141 @@ export function setPreferredHand(hand) {
   preferredHand = hand === "left" ? "left" : "right";
 }
 
+export function getTrackingFps() {
+  return Math.round(fps);
+}
+
 export function pickHandIndex(result) {
   const wanted = LABEL_FOR[preferredHand];
   const lists = result.handednesses || result.handedness || [];
-  for (let i = 0; i < (result.landmarks ? result.landmarks.length : 0); i++) {
+  const n = result.landmarks ? result.landmarks.length : 0;
+  for (let i = 0; i < n; i++) {
     const label = lists[i] && lists[i][0] ? lists[i][0].categoryName : null;
     if (label === wanted) return i;
-    if (label === null && lists.length === 0) return i; // no handedness info — take what we have
+    if (label === null && lists.length === 0) return i; // no handedness info
   }
   return -1;
 }
 
-// adaptive exponential smoothing: heavy smoothing for slow/precise moves,
-// light smoothing for fast strokes so the line doesn't lag behind the hand
-const smooth = { x: null, y: null };
+// ---------- One Euro filter: low jitter when still, low lag when moving ----------
+class OneEuro {
+  constructor(minCutoff = 1.1, beta = 0.03, dCutoff = 1.0) {
+    this.minCutoff = minCutoff;
+    this.beta = beta;
+    this.dCutoff = dCutoff;
+    this.x = null;
+    this.dx = 0;
+    this.t = null;
+  }
+  static alpha(cutoff, dt) {
+    const tau = 1 / (2 * Math.PI * cutoff);
+    return 1 / (1 + tau / dt);
+  }
+  reset() {
+    this.x = null;
+    this.dx = 0;
+    this.t = null;
+  }
+  filter(value, t) {
+    if (this.x === null) {
+      this.x = value;
+      this.t = t;
+      return value;
+    }
+    const dt = Math.max(1e-3, (t - this.t) / 1000);
+    this.t = t;
+    const dxRaw = (value - this.x) / dt;
+    this.dx += OneEuro.alpha(this.dCutoff, dt) * (dxRaw - this.dx);
+    const cutoff = this.minCutoff + this.beta * Math.abs(this.dx);
+    this.x += OneEuro.alpha(cutoff, dt) * (value - this.x);
+    return this.x;
+  }
+}
+const fx = new OneEuro();
+const fy = new OneEuro();
+
+// ---------- geometry ----------
+function angleBetween(a, b) {
+  const dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const na = Math.hypot(a[0], a[1], a[2]);
+  const nb = Math.hypot(b[0], b[1], b[2]);
+  if (!na || !nb) return 0;
+  return Math.acos(Math.max(-1, Math.min(1, dot / (na * nb))));
+}
+
+const vec = (lm, a, b) => [
+  lm[b].x - lm[a].x,
+  lm[b].y - lm[a].y,
+  (lm[b].z || 0) - (lm[a].z || 0),
+];
+
+// total bend across a finger's two joints — rotation and scale invariant
+function fingerCurl(lm, [mcp, pip, dip, tip]) {
+  return (
+    angleBetween(vec(lm, mcp, pip), vec(lm, pip, dip)) +
+    angleBetween(vec(lm, pip, dip), vec(lm, dip, tip))
+  );
+}
+
+// per-finger hysteresis kills borderline flicker at the source
+function updateExtension(lm) {
+  for (const [name, joints] of Object.entries(FINGERS)) {
+    const curl = fingerCurl(lm, joints);
+    // the thumb is naturally curved, so it needs a looser bar
+    const slack = name === "thumb" ? 0.45 : 0;
+    if (extended[name]) {
+      if (curl > CURL_FOLDED + slack) extended[name] = false;
+    } else if (curl < CURL_EXTENDED + slack) {
+      extended[name] = true;
+    }
+  }
+}
+
+function detectMode(world) {
+  // pinch first: measured in 3D and scaled by hand size, so it behaves the
+  // same near and far from the camera
+  const handSize = Math.hypot(...vec(world, 0, 9)) || 1e-6;
+  const pinchRatio = Math.hypot(...vec(world, 4, 8)) / handSize;
+  if (pinched) {
+    if (pinchRatio > PINCH_OFF) pinched = false;
+  } else if (pinchRatio < PINCH_ON) {
+    pinched = true;
+  }
+  if (pinched) return "pinch";
+
+  updateExtension(world);
+  const { index, middle, ring, pinky } = extended;
+  const count = index + middle + ring + pinky;
+
+  // count-based, so a slightly lazy finger doesn't break the gesture
+  if (count >= 4) return "eraseBig";
+  if (count === 3 && index && middle && ring) return "eraseSmall";
+  if (count === 2 && index && middle) return "hover";
+  if (count === 1 && index) return "draw";
+  return "hover";
+}
+
+// majority vote over a short window
+function stableMode(raw) {
+  voteBuf.push(raw);
+  if (voteBuf.length > VOTE_WINDOW) voteBuf.shift();
+  if (raw === mode) return mode;
+  let votes = 0;
+  for (const m of voteBuf) if (m === raw) votes++;
+  if (votes >= VOTE_MAJORITY) mode = raw;
+  return mode;
+}
+
+function resetState() {
+  pinched = false;
+  mode = "hover";
+  voteBuf = [];
+  extended = { index: false, middle: false, ring: false, pinky: false, thumb: false };
+  lastSeenAt = 0;
+  lastGood = null;
+  fx.reset();
+  fy.reset();
+}
 
 async function loadLandmarker() {
   if (landmarker) return landmarker;
@@ -67,8 +217,9 @@ async function loadLandmarker() {
     },
     runningMode: "VIDEO",
     numHands: 2, // see both hands so we can ignore the non-preferred one
-    minHandDetectionConfidence: 0.6,
-    minTrackingConfidence: 0.6,
+    minHandDetectionConfidence: 0.55,
+    minHandPresenceConfidence: 0.55,
+    minTrackingConfidence: 0.55,
   });
   try {
     landmarker = await vision.HandLandmarker.createFromOptions(fileset, options("GPU"));
@@ -78,59 +229,6 @@ async function loadLandmarker() {
   return landmarker;
 }
 
-function dist(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
-
-// a finger counts as extended when its tip is clearly further from the
-// wrist than its middle (PIP) joint — orientation independent
-function fingerExtended(lm, tipIdx, pipIdx) {
-  const wrist = lm[0];
-  return dist(lm[tipIdx], wrist) > dist(lm[pipIdx], wrist) * 1.15;
-}
-
-function detectMode(lm) {
-  const handSize = dist(lm[0], lm[9]) || 1e-6;
-  const pinchRatio = dist(lm[8], lm[4]) / handSize;
-  if (pinched) {
-    if (pinchRatio > PINCH_OFF) pinched = false;
-  } else if (pinchRatio < PINCH_ON) {
-    pinched = true;
-  }
-  if (pinched) return "pinch";
-
-  const index = fingerExtended(lm, 8, 6);
-  const middle = fingerExtended(lm, 12, 10);
-  const ring = fingerExtended(lm, 16, 14);
-  const pinky = fingerExtended(lm, 20, 18);
-
-  if (index && middle && ring && pinky) return "eraseBig"; // full palm
-  if (index && middle && ring && !pinky) return "eraseSmall"; // three fingers
-  if (index && middle && !ring) return "hover"; // two fingers — move only
-  if (index && !middle) return "draw"; // one finger — pointing
-  return "hover";
-}
-
-// debounce mode switches so a single noisy frame can't lift or drop the pen
-function stableMode(raw) {
-  if (raw === mode) {
-    pendingMode = null;
-    pendingCount = 0;
-    return mode;
-  }
-  if (raw === pendingMode) {
-    if (++pendingCount >= MODE_STABLE_FRAMES) {
-      mode = raw;
-      pendingMode = null;
-      pendingCount = 0;
-    }
-  } else {
-    pendingMode = raw;
-    pendingCount = 1;
-  }
-  return mode;
-}
-
 export async function startHandTracking(video, { onUpdate, onStatus }) {
   if (running) return;
   onStatus?.("loading hand model...");
@@ -138,74 +236,115 @@ export async function startHandTracking(video, { onUpdate, onStatus }) {
 
   onStatus?.("requesting camera...");
   stream = await navigator.mediaDevices.getUserMedia({
-    video: { width: 640, height: 480, facingMode: "user" },
+    video: {
+      width: { ideal: 640 },
+      height: { ideal: 480 },
+      frameRate: { ideal: TARGET_FPS, max: TARGET_FPS },
+      facingMode: "user",
+    },
     audio: false,
   });
   video.srcObject = stream;
+  videoEl = video;
   await video.play();
 
   running = true;
-  pinched = false;
-  mode = "hover";
+  resetState();
   onStatus?.("hand tracking on");
 
+  let lastInferAt = 0;
   let lastVideoTime = -1;
-  const loop = () => {
+
+  const process = (now) => {
     if (!running) return;
-    if (video.currentTime !== lastVideoTime) {
-      lastVideoTime = video.currentTime;
-      let result = null;
-      try {
-        result = landmarker.detectForVideo(video, performance.now());
-      } catch {
-        /* transient decode hiccup — skip this frame */
-      }
-      const handIdx = result ? pickHandIndex(result) : -1;
-      if (handIdx !== -1) {
-        const lm = result.landmarks[handIdx];
-        const indexTip = lm[8];
 
-        const rawX = 1 - indexTip.x; // mirror for selfie view
-        const rawY = indexTip.y;
+    // cap inference rate — the extra frames cost CPU without helping accuracy
+    if (now - lastInferAt < MIN_FRAME_MS) return;
+    if (video.currentTime === lastVideoTime) return;
+    lastVideoTime = video.currentTime;
 
-        if (smooth.x === null) {
-          smooth.x = rawX;
-          smooth.y = rawY;
-        } else {
-          const speed = Math.hypot(rawX - smooth.x, rawY - smooth.y);
-          // alpha 0.25 (steady) .. 0.85 (fast flick)
-          const alpha = Math.min(0.85, 0.25 + speed * 12);
-          smooth.x += alpha * (rawX - smooth.x);
-          smooth.y += alpha * (rawY - smooth.y);
-        }
+    const dt = now - lastInferAt;
+    if (lastInferAt) fps += (1000 / dt - fps) * 0.15;
+    lastInferAt = now;
 
-        onUpdate({ x: smooth.x, y: smooth.y, mode: stableMode(detectMode(lm)), detected: true });
-      } else {
-        smooth.x = smooth.y = null;
-        pinched = false;
-        mode = "hover";
-        pendingMode = null;
-        pendingCount = 0;
-        onUpdate({ detected: false });
-      }
+    let result = null;
+    try {
+      result = landmarker.detectForVideo(video, now);
+    } catch {
+      return; // transient decode hiccup — skip this frame
     }
-    rafId = requestAnimationFrame(loop);
+
+    const idx = result ? pickHandIndex(result) : -1;
+    if (idx !== -1) {
+      const screen = result.landmarks[idx];
+      // world landmarks are metric 3D; fall back to screen space if absent
+      const world = (result.worldLandmarks && result.worldLandmarks[idx]) || screen;
+
+      // anchor slightly behind the fingertip: steadier, and less affected by
+      // the fingertip swinging in as you pinch
+      const tip = screen[8];
+      const pip = screen[6];
+      const rawX = 1 - (tip.x * 0.78 + pip.x * 0.22); // mirror for selfie view
+      const rawY = tip.y * 0.78 + pip.y * 0.22;
+
+      const x = fx.filter(rawX, now);
+      const y = fy.filter(rawY, now);
+      const m = stableMode(detectMode(world));
+
+      lastSeenAt = now;
+      lastGood = { x, y, mode: m };
+      onUpdate({ x, y, mode: m, detected: true });
+      return;
+    }
+
+    // brief dropout: hold the last known pose rather than lifting the pen
+    if (lastGood && now - lastSeenAt < DROPOUT_GRACE_MS) {
+      onUpdate({ ...lastGood, detected: true });
+      return;
+    }
+
+    if (lastGood) {
+      lastGood = null;
+      resetState();
+    }
+    onUpdate({ detected: false });
   };
-  rafId = requestAnimationFrame(loop);
+
+  // requestVideoFrameCallback fires exactly once per decoded frame — no
+  // polling, no wasted wake-ups. rAF is the fallback.
+  if (typeof video.requestVideoFrameCallback === "function") {
+    const onFrame = (now) => {
+      if (!running) return;
+      process(performance.now());
+      videoCbId = video.requestVideoFrameCallback(onFrame);
+    };
+    videoCbId = video.requestVideoFrameCallback(onFrame);
+  } else {
+    const loop = () => {
+      if (!running) return;
+      process(performance.now());
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+  }
 }
 
 export function stopHandTracking(video) {
   running = false;
   if (rafId) cancelAnimationFrame(rafId);
   rafId = null;
+  if (videoCbId && videoEl && typeof videoEl.cancelVideoFrameCallback === "function") {
+    videoEl.cancelVideoFrameCallback(videoCbId);
+  }
+  videoCbId = null;
+  videoEl = null;
   if (stream) {
     stream.getTracks().forEach((t) => t.stop());
     stream = null;
   }
   if (video) video.srcObject = null;
-  smooth.x = smooth.y = null;
-  pinched = false;
-  mode = "hover";
+  resetState();
+  fps = 0;
 }
 
 export function isTracking() {

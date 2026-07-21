@@ -1,4 +1,10 @@
-import { startHandTracking, stopHandTracking, isTracking, setPreferredHand } from "./hand-tracking.js";
+import {
+  startHandTracking,
+  stopHandTracking,
+  isTracking,
+  setPreferredHand,
+  getTrackingFps,
+} from "./hand-tracking.js";
 import { sfx } from "./sounds.js";
 import { renderDoodles } from "./doodles.js";
 import { createDwell } from "./dwell.js";
@@ -216,8 +222,24 @@ handPrefBtn.addEventListener("click", () => {
 
 const camBtn = $("camToggleBtn");
 let camWantedOn = false; // the player's preference, remembered across auto-pauses
+let fpsTimer = null;
+
+function startFpsReadout() {
+  clearInterval(fpsTimer);
+  fpsTimer = setInterval(() => {
+    if (!isTracking()) return;
+    const f = getTrackingFps();
+    if (f > 0) camStatus.textContent = `tracking ${handPref} hand · ${f} fps`;
+  }, 1000);
+}
+
+function stopFpsReadout() {
+  clearInterval(fpsTimer);
+  fpsTimer = null;
+}
 
 function stopCam() {
+  stopFpsReadout();
   stopHandTracking(camVideo);
   camVideo.classList.remove("on");
   $("camOverlay").classList.add("hidden");
@@ -240,6 +262,7 @@ async function startCam(withGuide) {
     camBtn.classList.add("on");
     camBtn.textContent = "Stop air-draw";
     $("camOverlay").classList.remove("hidden");
+    startFpsReadout();
     if (withGuide) showGestureGuide();
     return true;
   } catch (err) {
@@ -434,8 +457,36 @@ function renderCamOverlay(hand) {
   }
 }
 
+// Layout rects are read every frame by the hand cursor, and each read forces
+// the browser to reflow. Cache them and refresh only when they can change.
+let rectCache = { at: 0, wrap: null, canvas: null };
+function cachedRects() {
+  const now = performance.now();
+  if (!rectCache.wrap || now - rectCache.at > 500) {
+    rectCache = {
+      at: now,
+      wrap: $("canvasWrap").getBoundingClientRect(),
+      canvas: canvas.getBoundingClientRect(),
+    };
+  }
+  return rectCache;
+}
+const invalidateRects = () => (rectCache.wrap = null);
+window.addEventListener("resize", invalidateRects);
+window.addEventListener("scroll", invalidateRects, true);
+
+// hit-testing and the camera mini-map are throttled: neither needs to run at
+// full tracking rate, and both are comparatively expensive
+let lastHitTest = { at: 0, x: 0, y: 0, el: null };
+let lastOverlayAt = 0;
+const OVERLAY_MS = 66; // ~15fps is plenty for a thumbnail
+
 function handleHand({ x, y, mode, detected }) {
-  renderCamOverlay({ x, y, mode, detected });
+  const now = performance.now();
+  if (now - lastOverlayAt > OVERLAY_MS) {
+    lastOverlayAt = now;
+    renderCamOverlay({ x, y, mode, detected });
+  }
   if (!detected) {
     handCursor.classList.add("hidden");
     handLast = null;
@@ -446,7 +497,7 @@ function handleHand({ x, y, mode, detected }) {
     return;
   }
 
-  const wrap = $("canvasWrap").getBoundingClientRect();
+  const { wrap, canvas: r } = cachedRects();
   const px = wrap.left + clamp01(x) * wrap.width;
   const py = wrap.top + clamp01(y) * wrap.height;
 
@@ -459,7 +510,6 @@ function handleHand({ x, y, mode, detected }) {
   handCursor.style.top = `${py - wrap.top}px`;
 
   // canvas-space normalized coordinates
-  const r = canvas.getBoundingClientRect();
   const cx = (px - r.left) / r.width;
   const cy = (py - r.top) / r.height;
   const overCanvas = cx >= 0 && cx <= 1 && cy >= 0 && cy <= 1;
@@ -467,7 +517,14 @@ function handleHand({ x, y, mode, detected }) {
   // hover feedback for anything under the cursor.
   // The toolbar floats ON the canvas, so UI under the cursor always wins
   // over drawing — hovering a tool never paints behind it.
-  const under = document.elementFromPoint(px, py);
+  // only re-hit-test when the cursor actually moved, or periodically
+  if (
+    Math.hypot(px - lastHitTest.x, py - lastHitTest.y) > 3 ||
+    now - lastHitTest.at > 100
+  ) {
+    lastHitTest = { at: now, x: px, y: py, el: document.elementFromPoint(px, py) };
+  }
+  const under = lastHitTest.el;
   const clickable = under ? under.closest("button, a, .color-swatch") : null;
   const overUI = !!(clickable || (under && under.closest("#toolbar")));
   setHandHover(clickable);
