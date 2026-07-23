@@ -78,7 +78,8 @@ function createRoom(roomId) {
     strokes: [], // replay buffer for late joiners
     settings: { ...DEFAULT_SETTINGS },
     hostId: null, // room creator; only the host may start a game
-    usedWords: new Set(), // words already offered, so they don't repeat
+    usedWords: new Set(), // words actually drawn here — never repeat them
+    recentOffers: [], // words shown as choices lately, avoided while possible
   };
   rooms.set(roomId, room);
   return room;
@@ -124,21 +125,52 @@ function clearTimer(room) {
   }
 }
 
-// Words already offered in this room are never offered again until the whole
-// pool has been used, then the cycle restarts.
+// Words drawn recently across every room, so a freshly created room doesn't
+// replay the same handful of words the last one just used.
+const GLOBAL_RECENT_MAX = 90;
+const globalRecent = [];
+
+function rememberGlobally(word) {
+  globalRecent.push(word);
+  if (globalRecent.length > GLOBAL_RECENT_MAX) globalRecent.shift();
+}
+
+// Every word is scored by how recently it was seen, and the stalest ones are
+// offered. Ranking rather than filtering means there is no cliff: when a pool
+// is nearly spent it still serves the least-recently-used words instead of
+// suddenly allowing anything. Only the word the drawer actually picks is
+// retired (see beginDrawing), so a pool lasts 3x longer than the choices imply.
 function pickWords(room, n) {
   const pool = [...new Set(wordPool(room.settings))];
-  let available = pool.filter((w) => !room.usedWords.has(w));
-  if (available.length < n) {
-    room.usedWords.clear();
-    available = pool;
-  }
-  for (let i = available.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [available[i], available[j]] = [available[j], available[i]];
-  }
-  const picked = available.slice(0, Math.min(n, available.length));
-  picked.forEach((w) => room.usedWords.add(w));
+
+  // whole pool drawn — start a fresh cycle
+  if (pool.every((w) => room.usedWords.has(w))) room.usedWords.clear();
+
+  const offerRank = new Map(room.recentOffers.map((w, i) => [w, i]));
+  const globalRank = new Map(globalRecent.map((w, i) => [w, i]));
+  const offerN = Math.max(1, room.recentOffers.length);
+  const globalN = Math.max(1, globalRecent.length);
+
+  const scored = pool.map((word) => {
+    let penalty = 0;
+    // already drawn in this room — by far the strongest reason to skip it
+    if (room.usedWords.has(word)) penalty += 1000;
+    // shown as a choice here recently (more recent = worse)
+    if (offerRank.has(word)) penalty += 100 + (offerRank.get(word) / offerN) * 100;
+    // drawn in any room recently, so new rooms don't replay the last one
+    if (globalRank.has(word)) penalty += 40 + (globalRank.get(word) / globalN) * 40;
+    return { word, penalty, tie: Math.random() };
+  });
+
+  // stalest first; random tie-break keeps equally-fresh words varied
+  scored.sort((a, b) => a.penalty - b.penalty || a.tie - b.tie);
+  const picked = scored.slice(0, Math.min(n, scored.length)).map((s) => s.word);
+
+  // remember what was shown so the same trio isn't offered again next turn
+  room.recentOffers.push(...picked);
+  const cap = Math.max(6, Math.min(36, Math.floor(pool.length / 2)));
+  while (room.recentOffers.length > cap) room.recentOffers.shift();
+
   return picked;
 }
 
@@ -210,6 +242,9 @@ function nextTurn(room) {
 function beginDrawing(room, word) {
   clearTimer(room);
   const drawTime = room.settings.drawTime;
+  // only the word actually drawn is retired; the skipped choices go back
+  room.usedWords.add(word);
+  rememberGlobally(word);
   room.word = word;
   room.phase = "drawing";
   room.timeLeft = drawTime;
@@ -463,4 +498,11 @@ if (require.main === module) {
   });
 }
 
-module.exports = { pickWords, wordPool, sanitizeSettings, DEFAULT_SETTINGS };
+module.exports = {
+  pickWords,
+  wordPool,
+  sanitizeSettings,
+  DEFAULT_SETTINGS,
+  rememberGlobally,
+  createRoom,
+};

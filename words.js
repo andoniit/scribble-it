@@ -28,6 +28,9 @@ module.exports = {
       "silver lining", "tip of the iceberg", "elephant in the room",
       "rose-tinted glasses", "house of cards", "double edged sword",
       "message in a bottle", "needle in a haystack", "eye of the storm",
+      "second wind", "cold feet", "blind spot", "open secret",
+      "breaking point", "fresh start", "last straw", "close call",
+      "turning point", "clean slate", "white lie", "wild card",
     ],
   },
 
@@ -37,6 +40,8 @@ module.exports = {
       "ice cream", "carrot", "cake", "corn", "lemon", "milk", "grapes",
       "orange", "pear", "cherry", "candy", "soup", "rice", "fries", "toast",
       "waffle", "hot dog", "pickle", "onion", "peanut", "muffin",
+      "jam", "butter", "honey", "salt shaker", "tea cup", "coffee",
+      "juice box", "ice pop", "pea pod", "tomato", "potato", "banana peel",
     ],
     medium: [
       "sushi", "taco", "spaghetti", "pancake", "popcorn", "watermelon",
@@ -44,6 +49,9 @@ module.exports = {
       "avocado", "cupcake", "burrito", "noodles", "pumpkin pie", "milkshake",
       "bacon", "omelette", "salad bowl", "gingerbread man", "candy cane",
       "birthday cake", "coconut", "mango", "broccoli", "mushroom", "lollipop",
+      "nachos", "quesadilla", "fried egg", "french toast", "bagel",
+      "cheesecake", "pie slice", "soup bowl", "stir fry", "fruit salad",
+      "hot sauce", "ice cream cone",
     ],
     hard: [
       "croissant", "fondue", "tiramisu", "dumpling", "guacamole", "lasagna",
@@ -52,6 +60,10 @@ module.exports = {
       "banana split", "eggs benedict", "chocolate fountain", "cheese platter",
       "food truck", "buffet", "picnic basket", "leftovers", "midnight snack",
       "brunch", "food coma", "secret recipe",
+      "sourdough starter", "wedding cake", "chocolate souffle",
+      "sushi platter", "tapas", "charcuterie", "flambe",
+      "molecular gastronomy", "pop up restaurant", "food critic",
+      "all you can eat", "bottomless brunch",
     ],
   },
 
@@ -60,6 +72,8 @@ module.exports = {
       "cat", "dog", "fish", "duck", "cow", "pig", "bird", "rabbit", "bee",
       "frog", "mouse", "horse", "snake", "sheep", "goat", "hen", "worm",
       "crab", "ant", "bat", "owl", "fox", "deer", "bear", "lion", "monkey",
+      "chick", "puppy", "kitten", "swan", "goose", "moth", "snail shell",
+      "tadpole", "pony", "donkey", "ladybug", "dragonfly",
     ],
     medium: [
       "penguin", "giraffe", "octopus", "kangaroo", "shark", "turtle",
@@ -67,6 +81,9 @@ module.exports = {
       "peacock", "zebra", "camel", "koala", "panda", "raccoon", "squirrel",
       "beaver", "otter", "walrus", "seal", "parrot", "toucan", "ostrich",
       "starfish", "jellyfish", "spider web", "beehive", "bird nest",
+      "polar bear", "rhino", "hippo", "crocodile", "gorilla", "wolf",
+      "eagle", "falcon", "pufferfish", "coral reef", "swarm of bees",
+      "anthill",
     ],
     hard: [
       "platypus", "axolotl", "narwhal", "sloth", "scorpion", "armadillo",
@@ -74,6 +91,9 @@ module.exports = {
       "pangolin", "tapir", "lemur", "iguana", "praying mantis", "hummingbird",
       "woodpecker", "pelican", "vulture", "tarantula", "stingray",
       "hermit crab", "wildebeest", "orangutan", "capybara", "puffer fish",
+      "komodo dragon", "manta ray", "okapi", "fennec fox", "snow leopard",
+      "bald eagle", "emperor penguin", "blue whale", "electric eel",
+      "leafcutter ant", "sea urchin", "basilisk lizard",
     ],
   },
 
@@ -82,6 +102,9 @@ module.exports = {
       "soccer ball", "basketball", "swimming", "running", "jump rope",
       "bowling", "fishing", "boxing", "tennis", "golf", "skating", "cycling",
       "baseball", "football", "surfing", "diving", "hiking", "sledding",
+      "skipping", "juggling", "yoga", "dancing", "climbing", "sprinting",
+      "stretching", "push up", "sit up", "cartwheel", "piggyback",
+      "arm wrestling",
     ],
     medium: [
       "skateboard", "archery", "karate", "hockey", "volleyball",
@@ -89,6 +112,9 @@ module.exports = {
       "badminton", "rowing", "sailing", "rock climbing", "snowboarding",
       "ping pong", "trampoline", "hurdles", "high jump", "scuba diving",
       "kayaking", "horse riding", "roller skating", "dodgeball",
+      "handball", "water polo", "lacrosse", "curl bar", "shuttlecock",
+      "goal post", "whistle", "stopwatch", "scoreboard", "team huddle",
+      "warm up", "free throw",
     ],
     hard: [
       "pole vault", "curling", "fencing", "synchronized swimming", "marathon",
@@ -97,6 +123,9 @@ module.exports = {
       "skydiving", "paragliding", "sumo wrestling", "figure skating",
       "penalty kick", "slam dunk", "home run", "hat trick", "photo finish",
       "victory lap", "podium", "half time",
+      "relay race", "steeplechase", "discus", "decathlon", "luge",
+      "biathlon", "offside", "slam contest", "locker room", "mascot",
+      "half pipe", "wipeout",
     ],
   },
 
@@ -105,6 +134,8 @@ module.exports = {
       "gear", "wrench", "hammer", "ladder", "magnet", "battery", "wheel",
       "screw", "robot", "antenna", "spring", "pulley", "nail", "bolt",
       "pipe", "switch", "plug", "lever", "chain", "ruler", "toolbox",
+      "drill", "saw", "tape measure", "funnel", "pump", "fan blade",
+      "light bulb", "wire", "pliers", "sandpaper", "bucket", "hinge",
     ],
     medium: [
       "circuit board", "blueprint", "bulldozer", "crane", "satellite",
@@ -112,6 +143,9 @@ module.exports = {
       "jackhammer", "periscope", "forklift", "excavator", "welding torch",
       "gearbox", "propeller", "turbine", "radar dish", "power line",
       "scaffolding", "hard hat", "blowtorch", "clamp", "engine",
+      "pulley system", "robot arm", "printing press", "water wheel",
+      "hydraulic jack", "cargo ship", "control panel", "servo motor",
+      "gear train", "ball bearing", "sensor", "circuit",
     ],
     hard: [
       "suspension bridge", "hydraulic press", "transistor", "assembly line",
@@ -120,6 +154,10 @@ module.exports = {
       "combustion chamber", "circuit breaker", "cooling tower", "dam spillway",
       "space elevator", "clean room", "prototype", "quality control",
       "reverse engineering", "load bearing wall", "tunnel boring machine",
+      "nuclear reactor", "oil rig", "maglev train", "solar farm",
+      "desalination plant", "rocket booster", "heat exchanger",
+      "geodesic dome", "cantilever", "blast furnace", "conveyor sorter",
+      "vacuum chamber",
     ],
   },
 
@@ -130,6 +168,9 @@ module.exports = {
       "champagne", "rose petals", "bubble bath", "candlelit dinner",
       "bedroom eyes", "thirst trap", "booty call", "sexting", "tan lines",
       "fishnets", "leather", "corset", "blindfold", "garter belt",
+      "red lipstick", "stiletto heels", "silk sheets", "wine glass",
+      "love bite", "slow undress", "shoulder kiss", "perfume",
+      "mood lighting", "bare shoulder", "velvet rope", "whisper",
     ],
     medium: [
       "hangover", "skinny dipping", "bachelor party", "bachelorette party",
