@@ -705,6 +705,28 @@ aside h2 {
   box-shadow: var(--shadow-sm);
 }
 
+/* ---------- paused overlay ---------- */
+/* above the word chooser and every other modal (.overlay is z-index 50) */
+#pausedOverlay { z-index: 60; background: rgba(253, 243, 227, 0.86); }
+.paused-card {
+  background: var(--yellow);
+  border: var(--border) solid var(--ink);
+  border-radius: var(--radius);
+  padding: 22px 30px;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  transform: rotate(-1.5deg);
+}
+.paused-card h3 {
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  letter-spacing: -0.3px;
+  margin-bottom: 6px;
+}
+.paused-card p { font-size: 0.85rem; font-weight: 600; }
+
+#pauseBtn.on { background: var(--coral); }
+
 /* ---------- gesture guide ---------- */
 #gestureGuide {
   position: absolute;

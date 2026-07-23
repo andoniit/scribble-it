@@ -60,6 +60,7 @@
       <div id="wordDisplay">Waiting for players...</div>
       <div class="top-right">
         <div id="timerDisplay" class="chip">–</div>
+        <button id="pauseBtn" class="chip icon-chip hidden" title="Pause the game (host only)">Pause</button>
         <button id="muteBtn" class="chip icon-chip" title="Toggle sound">Sound on</button>
       </div>
     </header>
@@ -145,6 +146,14 @@
         </div>
         <button id="settingsStartBtn" class="big-btn">Start game</button>
         <button id="settingsCancelBtn" class="link-btn">cancel</button>
+      </div>
+    </div>
+
+    <!-- paused overlay — sits above every modal so nothing is actionable -->
+    <div id="pausedOverlay" class="overlay hidden">
+      <div class="paused-card">
+        <h3>Game paused</h3>
+        <p id="pausedNote">Waiting for the host to resume…</p>
       </div>
     </div>
 

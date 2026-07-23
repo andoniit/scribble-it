@@ -27,6 +27,7 @@ const chatList = $("chatList");
 let selfId = null;
 let isDrawer = false;
 let isHost = false;
+let isPaused = false;
 let phase = "lobby";
 let color = "#1a1c2c";
 let brushSize = 8; // must match one of BRUSH_SIZES so a button starts active
@@ -344,10 +345,12 @@ function evtPoint(e) {
   return { x: cx / r.width, y: cy / r.height };
 }
 
-// lobby = free warm-up doodling for everyone; in-game only the drawer draws
-const canDrawNow = () => phase === "lobby" || (isDrawer && phase === "drawing");
+// lobby = free warm-up doodling for everyone; in-game only the drawer draws,
+// and nobody draws while the host has the game paused
+const canDrawNow = () =>
+  phase === "lobby" || (isDrawer && phase === "drawing" && !isPaused);
 // warm-up doodles stay on your own screen — only real turns are broadcast
-const canBroadcast = () => isDrawer && phase === "drawing";
+const canBroadcast = () => isDrawer && phase === "drawing" && !isPaused;
 
 // ---------- mouse / touch drawing ----------
 let mouseDown = false;
@@ -719,6 +722,11 @@ CATEGORIES.forEach(({ id, label }) => {
 });
 
 $("startBtn").addEventListener("click", () => $("settingsModal").classList.remove("hidden"));
+
+$("pauseBtn").addEventListener("click", () => {
+  sfx.click();
+  socket.emit("setPaused", !isPaused);
+});
 $("settingsCancelBtn").addEventListener("click", () => $("settingsModal").classList.add("hidden"));
 $("settingsStartBtn").addEventListener("click", () => {
   $("settingsModal").classList.add("hidden");
@@ -776,6 +784,18 @@ socket.on("roomState", (s) => {
   } else {
     waitMsg.classList.add("hidden");
   }
+  // ---- pause state (host controls it, everyone sees it) ----
+  isPaused = !!s.paused;
+  const pausable = s.phase === "choosing" || s.phase === "drawing";
+  const pauseBtn = $("pauseBtn");
+  pauseBtn.classList.toggle("hidden", !(isHost && pausable));
+  pauseBtn.classList.toggle("on", isPaused);
+  pauseBtn.textContent = isPaused ? "Resume" : "Pause";
+  $("pausedOverlay").classList.toggle("hidden", !isPaused);
+  $("pausedNote").textContent = isHost
+    ? "Press Resume when you're ready."
+    : `Waiting for ${host ? host.name : "the host"} to resume…`;
+
   toolbar.classList.toggle("hidden", !canDrawNow());
   syncCamWithTurn();
 

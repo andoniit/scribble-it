@@ -77,7 +77,8 @@ function createRoom(roomId) {
     drawnThisRound: new Set(), // player ids who already drew this round
     strokes: [], // replay buffer for late joiners
     settings: { ...DEFAULT_SETTINGS },
-    hostId: null, // room creator; only the host may start a game
+    hostId: null, // room creator; only the host may start or pause a game
+    paused: false, // host-controlled freeze on the turn timer
     usedWords: new Set(), // words actually drawn here — never repeat them
     recentOffers: [], // words shown as choices lately, avoided while possible
   };
@@ -112,6 +113,7 @@ function broadcastState(room) {
     players: publicPlayers(room),
     drawerId: room.drawerId,
     hostId: room.hostId,
+    paused: room.paused,
     timeLeft: room.timeLeft,
     masked: room.phase === "drawing" ? maskedWord(room) : "",
     settings: room.settings,
@@ -200,6 +202,7 @@ function startGame(room, rawSettings) {
 
 function nextTurn(room) {
   clearTimer(room);
+  room.paused = false; // a pause never carries into the next turn
   room.word = null;
   room.revealed = new Set();
   room.strokes = [];
@@ -231,6 +234,7 @@ function nextTurn(room) {
   broadcastState(room);
 
   room.timer = setInterval(() => {
+    if (room.paused) return; // host froze the game
     room.timeLeft--;
     if (room.timeLeft <= 0) {
       // auto-pick first word
@@ -257,6 +261,7 @@ function beginDrawing(room, word) {
 
   const hintAt = [Math.floor(drawTime * 0.5), Math.floor(drawTime * 0.25)];
   room.timer = setInterval(() => {
+    if (room.paused) return; // host froze the game
     room.timeLeft--;
 
     if (hintAt.includes(room.timeLeft)) revealHint(room);
@@ -280,6 +285,7 @@ function revealHint(room) {
 
 function endTurn(room, reason) {
   clearTimer(room);
+  room.paused = false;
   room.phase = "roundEnd";
   io.to(room.id).emit("turnEnd", { word: room.word, reason, players: publicPlayers(room) });
   broadcastState(room);
@@ -299,6 +305,7 @@ function endTurn(room, reason) {
 
 function endGame(room) {
   clearTimer(room);
+  room.paused = false;
   room.phase = "gameEnd";
   room.drawerId = null;
   const ranking = [...room.players].sort((a, b) => b.score - a.score);
@@ -369,15 +376,41 @@ io.on("connection", (socket) => {
     startGame(room, settings);
   });
 
+  // ---- host-only pause / resume ----
+  socket.on("setPaused", (wantPaused) => {
+    const room = joinedRoom;
+    if (!room) return;
+    if (socket.id !== room.hostId) {
+      socket.emit("systemMessage", "Only the room host can pause the game.");
+      return;
+    }
+    // only a live, timed turn can be paused
+    if (room.phase !== "choosing" && room.phase !== "drawing") return;
+
+    const next = !!wantPaused;
+    if (room.paused === next) return;
+    room.paused = next;
+
+    const host = room.players.find((p) => p.id === room.hostId);
+    const who = host ? host.name : "The host";
+    io.to(room.id).emit(
+      "systemMessage",
+      next ? `${who} paused the game.` : `${who} resumed the game.`
+    );
+    broadcastState(room);
+  });
+
   socket.on("chooseWord", (word) => {
     const room = joinedRoom;
-    if (!room || room.phase !== "choosing" || socket.id !== room.drawerId) return;
+    if (!room || room.paused) return; // can't start a turn mid-pause
+    if (room.phase !== "choosing" || socket.id !== room.drawerId) return;
     if (!room.wordChoices.includes(word)) return;
     beginDrawing(room, word);
   });
 
   // only the current drawer's strokes are shared (lobby warm-up stays local)
-  const mayDraw = (room) => room.phase === "drawing" && socket.id === room.drawerId;
+  const mayDraw = (room) =>
+    room.phase === "drawing" && !room.paused && socket.id === room.drawerId;
 
   socket.on("stroke", (seg) => {
     const room = joinedRoom;
@@ -399,6 +432,7 @@ io.on("connection", (socket) => {
   socket.on("guess", (text) => {
     const room = joinedRoom;
     if (!room) return;
+    if (room.paused) return; // no scoring or chatter while frozen
     text = String(text || "").trim().slice(0, 100);
     if (!text) return;
 
